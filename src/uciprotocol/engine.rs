@@ -196,6 +196,10 @@ impl Engine {
         start_time: Instant,
         max_time: u64,
     ) -> Option<(Move, i32)> {
+        if (start_time.elapsed().as_millis() as u64) > max_time {
+            return None;
+        }
+
         let mut alpha = NEGATIVE_INFINITY;
         let beta = POSITIVE_INFINITY;
 
@@ -204,7 +208,7 @@ impl Engine {
         let mut best_move = NULL_MOVE;
 
         for chess_move in ordered_moves {
-            let evaluation = self.alpha_beta(
+            let evaluation = -self.alpha_beta(
                 position.clone().play(&chess_move).unwrap(),
                 -beta,
                 -alpha,
@@ -233,17 +237,21 @@ impl Engine {
     ) -> (Move, i32) {
         let start_time = Instant::now();
 
-        let mut best_move = position.legal_moves()[0].clone();
+        let mut best_move = NULL_MOVE;
         let mut best_evaluation = NEGATIVE_INFINITY;
 
         let mut depth: u8 = 1;
 
         while ((start_time.elapsed().as_millis() as u64) < max_time) && (depth <= max_depth) {
             info!("searching {} ply deep", depth);
-            (best_move, best_evaluation) = match self.root_search(position.clone(), depth, start_time, max_time) {
-                Some(val) => val,
-                None => {info!("search cancelled (time)"); break}
-            };
+            (best_move, best_evaluation) =
+                match self.root_search(position.clone(), depth, start_time, max_time) {
+                    Some(val) => val,
+                    None => {
+                        info!("search cancelled (time)");
+                        break;
+                    }
+                };
             depth += 1;
         }
 
@@ -261,7 +269,7 @@ impl Engine {
             let chess_move = uci.to_move(&position).unwrap();
             return (chess_move, uci);
         }
-        let (best_move, _) = self.iterative_deepening(position, max_time, 20);
+        let (best_move, _) = self.iterative_deepening(position, max_time, 40);
         (
             best_move.clone(),
             best_move.clone().to_uci(CastlingMode::Standard),

@@ -111,9 +111,8 @@ impl Evaluator {
             - black_material.queen as i32 * 900
     }
 
-
     pub fn evaluate(&self, position: Chess, depth_from_root: u8) -> i32 {
-        match position.outcome() {
+        let evaluation = match position.outcome() {
             Some(Outcome::Draw) => return 0,
             Some(Outcome::Decisive { winner }) => {
                 if winner == Color::White {
@@ -123,7 +122,11 @@ impl Evaluator {
                 }
             }
             // None => self.score(position.clone()),
-            None => self.count_pieces(position.clone()),
+            None => self.count_pieces(position.clone()), /* + self.score(position.clone())*/
+        };
+        if position.turn() == Color::Black {
+            return  -evaluation;
         }
+        return  evaluation;
     }
 }
