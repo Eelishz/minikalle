@@ -20,38 +20,9 @@ const NULL_MOVE: Move = Move::Normal {
 const POSITIVE_INFINITY: i32 = 999999999;
 const NEGATIVE_INFINITY: i32 = -999999999;
 
-struct Transposition {
-    depth: u8,
-    evaluation: i32,
-    color: Color,
-}
-
-struct TranspositionTable {
-    table: HashMap<Chess, Transposition>,
-}
-
-impl TranspositionTable {
-    pub fn new() -> TranspositionTable {
-        TranspositionTable {
-            table: HashMap::new(),
-        }
-    }
-
-    pub fn insert(&mut self, evaluation: i32, position: Chess, depth: u8, color: Color) -> i32 {
-        self.table.insert(
-            position,
-            Transposition {
-                depth,
-                evaluation,
-                color,
-            },
-        );
-        evaluation
-    }
-}
 
 pub struct Engine {
-    tt: TranspositionTable,
+    tt: HashMap<Chess, (i32, u8, Color)>,
     book: HashMap<u64, Vec<String>>,
     evaluator: evaluator::Evaluator,
 }
@@ -65,7 +36,7 @@ impl Engine {
 
         let book = serde_json::from_str(&openings).unwrap();
         Engine {
-            tt: TranspositionTable::new(),
+            tt: HashMap::new(),
             book,
             evaluator: evaluator::Evaluator::new(),
         }
@@ -129,33 +100,32 @@ impl Engine {
         if (start_time.elapsed().as_millis() as u64) > max_time {
             return None;
         }
-        match self.tt.table.get(&position) {
-            Some(transposition) => {
-                if transposition.depth >= depth_left {
-                    let evlauation = transposition.evaluation;
-                    if transposition.color == position.turn() {
-                        return Some(evlauation);
+
+        let turn = position.turn();
+
+        match self.tt.get(&position) {
+            Some((evaluation, depth, _turn)) => {
+                if depth >= &depth_left {
+                    if _turn == &turn {
+                        return Some(*evaluation);
                     }
-                    return Some(-evlauation);
+                    return Some(-evaluation);
                 }
             }
             None => (),
         };
 
-        if depth_left == 0 {
-            return Some(self.tt.insert(
-                self.quiesce(
+        if (depth_left == 0) || position.is_game_over() {
+                let evaluation = self.quiesce(
                     position.clone(),
                     alpha,
                     beta,
                     depth_from_root + 1,
                     start_time,
                     max_time,
-                )?,
-                position.clone(),
-                depth_from_root,
-                position.turn(),
-            ));
+                )?;
+                self.tt.insert(position.clone(), (evaluation, depth_left, turn));
+                return Some(evaluation);
         }
 
         let moves = self.order_moves(position.clone());
@@ -171,22 +141,16 @@ impl Engine {
                 max_time,
             )?;
             if score >= beta {
-                return Some(self.tt.insert(
-                    beta,
-                    position.clone(),
-                    depth_from_root,
-                    position.turn(),
-                ));
+                self.tt.insert(position.clone(), (beta, depth_left, turn));
+                return Some(beta);
             }
             if score > alpha {
                 alpha = score;
             }
         }
 
-        return Some(
-            self.tt
-                .insert(alpha, position.clone(), depth_from_root, position.turn()),
-        );
+        self.tt.insert(position.clone(), (alpha, depth_left, turn));
+        return Some(alpha);
     }
 
     fn root_search(
@@ -205,7 +169,7 @@ impl Engine {
 
         let ordered_moves = self.order_moves(position.clone());
 
-        let mut best_move = NULL_MOVE;
+        let mut best_move = position.legal_moves()[0].clone();
 
         for chess_move in ordered_moves {
             let evaluation = -self.alpha_beta(
@@ -242,7 +206,7 @@ impl Engine {
 
         let mut depth: u8 = 1;
 
-        while ((start_time.elapsed().as_millis() as u64) < max_time) && (depth <= max_depth) {
+        while depth <= max_depth {
             info!("searching {} ply deep", depth);
             (best_move, best_evaluation) =
                 match self.root_search(position.clone(), depth, start_time, max_time) {
@@ -255,11 +219,11 @@ impl Engine {
             depth += 1;
         }
 
-        info!("eval {}", best_evaluation);
+        //info!("hash table size: {}", self.tt);
         (best_move, best_evaluation)
     }
 
-    pub fn find_best_move(&mut self, position: Chess, max_time: u64) -> (Move, Uci) {
+    pub fn find_best_move(&mut self, position: Chess, max_time: u64) -> (Move, Uci, i32) {
         let zobrist = position.zobrist_hash::<Zobrist64>(shakmaty::EnPassantMode::Legal);
         if self.book.contains_key(&zobrist.0) {
             info!("using book");
@@ -267,12 +231,13 @@ impl Engine {
             let move_string = moves.choose(&mut rand::thread_rng()).unwrap();
             let uci = Uci::from_str(move_string).unwrap();
             let chess_move = uci.to_move(&position).unwrap();
-            return (chess_move, uci);
+            return (chess_move, uci, 0);
         }
-        let (best_move, _) = self.iterative_deepening(position, max_time, 40);
+        let (best_move, evaluation) = self.iterative_deepening(position, max_time, 40);
         (
             best_move.clone(),
             best_move.clone().to_uci(CastlingMode::Standard),
+            evaluation,
         )
     }
 }

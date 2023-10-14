@@ -112,11 +112,12 @@ impl UciProtocol {
         self.playing_as = self.position.turn();
         let think_time = self.calc_think_time(message).clamp(0, 15_000);
         info!("thinking for {}ms", think_time);
-        let (chess_move, uci) = self
+        let (chess_move, uci, evaluation) = self
             .chess_engine
             .find_best_move(self.position.clone(), think_time);
         self.position = self.position.clone().play(&chess_move).unwrap();
-        println!("bestmove {}", uci)
+        println!("bestmove {}", uci);
+        println!("info score cp {}", evaluation);
     }
 
     pub fn start(&mut self) {

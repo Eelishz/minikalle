@@ -121,12 +121,8 @@ impl Evaluator {
                     NEGATIVE_INFINITY + depth_from_root as i32
                 }
             }
-            // None => self.score(position.clone()),
-            None => self.count_pieces(position.clone()), /* + self.score(position.clone())*/
+            None => self.count_pieces(position.clone())// + self.score(position.clone())
         };
-        if position.turn() == Color::Black {
-            return  -evaluation;
-        }
-        return  evaluation;
+        if position.turn() == Color::Black {-evaluation} else {evaluation}
     }
 }
