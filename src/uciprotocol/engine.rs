@@ -25,6 +25,7 @@ pub struct Engine {
     tt: HashMap<Chess, (i32, u8, Color)>,
     book: HashMap<u64, Vec<String>>,
     evaluator: evaluator::Evaluator,
+    nodes_searched: u64
 }
 
 impl Engine {
@@ -39,6 +40,7 @@ impl Engine {
             tt: HashMap::new(),
             book,
             evaluator: evaluator::Evaluator::new(),
+            nodes_searched: 0
         }
     }
 
@@ -47,7 +49,7 @@ impl Engine {
     }
 
     fn quiesce(
-        &self,
+        & mut self,
         position: Chess,
         mut alpha: i32,
         beta: i32,
@@ -58,6 +60,9 @@ impl Engine {
         if (start_time.elapsed().as_millis() as u64) > max_time {
             return None;
         }
+
+        self.nodes_searched += 1;
+
         let stand_pat = self.evaluator.evaluate(position.clone(), depth_from_root);
         if stand_pat >= beta {
             return Some(beta);
@@ -100,6 +105,8 @@ impl Engine {
         if (start_time.elapsed().as_millis() as u64) > max_time {
             return None;
         }
+
+        self.nodes_searched += 1;
 
         let turn = position.turn();
 
@@ -164,6 +171,8 @@ impl Engine {
             return None;
         }
 
+        self.nodes_searched += 1;
+
         let mut alpha = NEGATIVE_INFINITY;
         let beta = POSITIVE_INFINITY;
 
@@ -206,6 +215,8 @@ impl Engine {
 
         let mut depth: u8 = 1;
 
+        let prev_nodes_searched = self.nodes_searched;
+
         while depth <= max_depth {
             info!("searching {} ply deep", depth);
             (best_move, best_evaluation) =
@@ -219,7 +230,8 @@ impl Engine {
             depth += 1;
         }
 
-        //info!("hash table size: {}", self.tt);
+        let nps = (self.nodes_searched - prev_nodes_searched) / (start_time.elapsed().as_millis() as u64) * 1000;
+        println!("info nodes {} nps {}", self.nodes_searched, nps);
         (best_move, best_evaluation)
     }
 
