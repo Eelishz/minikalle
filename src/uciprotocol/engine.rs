@@ -20,12 +20,11 @@ const NULL_MOVE: Move = Move::Normal {
 const POSITIVE_INFINITY: i32 = 999999999;
 const NEGATIVE_INFINITY: i32 = -999999999;
 
-
 pub struct Engine {
     tt: HashMap<Chess, (i32, u8, Color)>,
     book: HashMap<u64, Vec<String>>,
     evaluator: evaluator::Evaluator,
-    nodes_searched: u64
+    nodes_searched: u64,
 }
 
 impl Engine {
@@ -40,7 +39,7 @@ impl Engine {
             tt: HashMap::new(),
             book,
             evaluator: evaluator::Evaluator::new(),
-            nodes_searched: 0
+            nodes_searched: 0,
         }
     }
 
@@ -49,7 +48,7 @@ impl Engine {
     }
 
     fn quiesce(
-        & mut self,
+        &mut self,
         position: Chess,
         mut alpha: i32,
         beta: i32,
@@ -123,16 +122,17 @@ impl Engine {
         };
 
         if (depth_left == 0) || position.is_game_over() {
-                let evaluation = self.quiesce(
-                    position.clone(),
-                    alpha,
-                    beta,
-                    depth_from_root + 1,
-                    start_time,
-                    max_time,
-                )?;
-                self.tt.insert(position.clone(), (evaluation, depth_left, turn));
-                return Some(evaluation);
+            let evaluation = self.quiesce(
+                position.clone(),
+                alpha,
+                beta,
+                depth_from_root + 1,
+                start_time,
+                max_time,
+            )?;
+            self.tt
+                .insert(position.clone(), (evaluation, depth_left, turn));
+            return Some(evaluation);
         }
 
         let moves = self.order_moves(position.clone());
@@ -215,7 +215,7 @@ impl Engine {
 
         let mut depth: u8 = 1;
 
-        let prev_nodes_searched = self.nodes_searched;
+        self.nodes_searched = 0;
 
         while depth <= max_depth {
             info!("searching {} ply deep", depth);
@@ -230,8 +230,11 @@ impl Engine {
             depth += 1;
         }
 
-        let nps = (self.nodes_searched - prev_nodes_searched) / (start_time.elapsed().as_millis() as u64) * 1000;
-        println!("info nodes {} nps {}", self.nodes_searched, nps);
+        let nps = self.nodes_searched / (start_time.elapsed().as_millis() as u64) * 1000;
+        println!(
+            "info nodes {} nps {} depth {}",
+            self.nodes_searched, nps, depth
+        );
         (best_move, best_evaluation)
     }
 
