@@ -5,7 +5,7 @@ use shakmaty::{uci::Uci, CastlingMode, Chess, Color, Move, MoveList, Position, R
 use std::io::prelude::*;
 use std::str::FromStr;
 use std::{collections::HashMap, fs::File, time::Instant};
-// use rayon::prelude::*;
+use rayon::prelude::*;
 
 mod evaluator;
 
@@ -43,8 +43,24 @@ impl Engine {
         }
     }
 
-    fn order_moves(&self, position: Chess) -> MoveList {
-        position.legal_moves()
+    fn order_moves(&self, position: Chess) -> Vec<Move> {
+        let legal_moves = position.legal_moves().to_vec();
+        let mut capture_moves = position.capture_moves().to_vec();
+        let mut promotion_moves = position.promotion_moves().to_vec();
+        let mut other_moves: Vec<Move> = vec![];
+        for chess_move in legal_moves {
+            if !capture_moves.contains(&chess_move) || !promotion_moves.contains(&chess_move) {
+                other_moves.append(&mut vec![chess_move])
+            }
+        }
+
+        let mut ordered_moves: Vec<Move> = vec![];
+
+        ordered_moves.append(&mut promotion_moves);
+        ordered_moves.append(&mut capture_moves);
+        ordered_moves.append(&mut other_moves);
+
+        return ordered_moves;
     }
 
     fn quiesce(
@@ -181,7 +197,7 @@ impl Engine {
         let mut best_move = position.legal_moves()[0].clone();
 
         for chess_move in ordered_moves {
-            let evaluation = -self.alpha_beta(
+           let evaluation = -self.alpha_beta(
                 position.clone().play(&chess_move).unwrap(),
                 -beta,
                 -alpha,
@@ -227,6 +243,11 @@ impl Engine {
                         break;
                     }
                 };
+            let nps = self.nodes_searched / (start_time.elapsed().as_millis() as u64 + 1) * 1000;
+            println!(
+                "info nodes {} nps {} depth {}",
+                self.nodes_searched, nps, depth
+            );
             depth += 1;
         }
 
