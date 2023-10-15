@@ -19,5 +19,10 @@ fn main() {
     log4rs::init_config(config).unwrap();
 
     let mut uci_protocol = uciprotocol::UciProtocol::new();
+
+    //for i in 0..100 {
+    //    uci_protocol.go(&"go mtime 50000".to_string());
+    //}
+
     uci_protocol.start()
 }

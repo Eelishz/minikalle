@@ -108,7 +108,7 @@ impl UciProtocol {
         }
     }
 
-    fn go(&mut self, message: &String) {
+    pub fn go(&mut self, message: &String) {
         self.playing_as = self.position.turn();
         let think_time = self.calc_think_time(message).clamp(0, 15_000);
         info!("thinking for {}ms", think_time);
