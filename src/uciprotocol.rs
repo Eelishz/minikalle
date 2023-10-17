@@ -138,7 +138,7 @@ impl UciProtocol {
 
     pub fn go(&mut self, message: &String) {
         self.playing_as = self.position.turn();
-        let think_time = self.calc_think_time(message).clamp(0, 15_000);
+        let think_time = self.calc_think_time(message).clamp(0, 60_000);
         info!("thinking for {}ms", think_time);
         let (chess_move, uci, _) = self
             .chess_engine
