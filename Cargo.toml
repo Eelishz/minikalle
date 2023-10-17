@@ -16,3 +16,12 @@ rayon = "1.8.0"
 
 [profile.dev]
 debug = true
+
+[profile.test]
+incremental = true
+opt-level = 0
+debug = 1
+lto = false
+debug-assertions = true
+overflow-checks = true
+rpath = false 

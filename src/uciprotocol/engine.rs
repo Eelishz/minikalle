@@ -37,7 +37,6 @@ mod tests {
             POSITIVE_INFINITY,
             3,
             0,
-            false,
             Instant::now(),
             1000,
         );
@@ -259,7 +258,6 @@ impl Engine {
         beta: i32,
         depth_left: u8,
         depth_from_root: u8,
-        null_move_allowed: bool,
         start_time: Instant,
         max_time: u64,
     ) -> Option<i32> {
@@ -293,28 +291,6 @@ impl Engine {
             return Some(evaluation);
         }
 
-        let null_move_possible = !position.is_check();
-
-        if null_move_allowed && null_move_possible {
-            let r: i8 = 3;
-            let null_depth = ((depth_left as i8) - r - 1).clamp(0, 127) as u8;
-
-            let evaluation = -self.alpha_beta(
-                position.clone().swap_turn().unwrap(),
-                -beta,
-                1 - beta,
-                null_depth,
-                depth_from_root + 1,
-                false,
-                start_time,
-                max_time,
-            )?;
-
-            if evaluation >= beta {
-                return Some(beta);
-            }
-        }
-
         let moves = self.order_moves(&position);
 
         for chess_move in moves {
@@ -326,7 +302,6 @@ impl Engine {
                 -alpha,
                 depth_left + extensions - 1,
                 depth_from_root + 1,
-                true,
                 start_time,
                 max_time,
             )?;
@@ -372,7 +347,6 @@ impl Engine {
                 -alpha,
                 max_depth - 1,
                 1,
-                true,
                 start_time,
                 max_time,
             )?;
