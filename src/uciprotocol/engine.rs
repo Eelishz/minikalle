@@ -388,7 +388,6 @@ impl Engine {
                     }
                 };
             if (best_evaluation == POSITIVE_INFINITY) || (best_evaluation == NEGATIVE_INFINITY) {
-                println!("mate");
                 break;
             }
             depth += 1;

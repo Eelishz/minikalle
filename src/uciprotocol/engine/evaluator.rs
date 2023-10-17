@@ -31,7 +31,7 @@ pub fn evaluate(position: &Chess) -> i32 {
                 NEGATIVE_INFINITY
             }
         }
-        None => count_pieces(position.board()) + parse_tables(position.board()),
+        None => count_pieces(position.board()),
     };
     match position.turn() {
         Color::Black => -evaluation,
