@@ -32,11 +32,12 @@ mod tests {
 
         // Call your alpha-beta function
         let result = engine.alpha_beta(
-            &position,
+            position,
             NEGATIVE_INFINITY,
             POSITIVE_INFINITY,
             3,
             0,
+            false,
             Instant::now(),
             1000,
         );
@@ -183,7 +184,7 @@ impl Engine {
         &mut self,
         position: &Chess,
         mut alpha: i32,
-        mut beta: i32,
+        beta: i32,
         depth_from_root: u8,
         start_time: Instant,
         max_time: u64,
@@ -253,11 +254,12 @@ impl Engine {
 
     fn alpha_beta(
         &mut self,
-        position: &Chess,
+        position: Chess,
         mut alpha: i32,
         beta: i32,
         depth_left: u8,
         depth_from_root: u8,
+        null_move_allowed: bool,
         start_time: Instant,
         max_time: u64,
     ) -> Option<i32> {
@@ -291,17 +293,40 @@ impl Engine {
             return Some(evaluation);
         }
 
+        let null_move_possible = !position.is_check();
+
+        if null_move_allowed && null_move_possible {
+            let r: i8 = 3;
+            let null_depth = ((depth_left as i8) - r - 1).clamp(0, 127) as u8;
+
+            let evaluation = -self.alpha_beta(
+                position.clone().swap_turn().unwrap(),
+                -beta,
+                1 - beta,
+                null_depth,
+                depth_from_root + 1,
+                false,
+                start_time,
+                max_time,
+            )?;
+
+            if evaluation >= beta {
+                return Some(beta);
+            }
+        }
+
         let moves = self.order_moves(&position);
 
         for chess_move in moves {
             let extensions = self.calculate_extension(&position, &chess_move);
 
             let score = -self.alpha_beta(
-                &position.clone().play(&chess_move).unwrap(),
+                position.clone().play(&chess_move).unwrap(),
                 -beta,
                 -alpha,
                 depth_left + extensions - 1,
                 depth_from_root + 1,
+                true,
                 start_time,
                 max_time,
             )?;
@@ -342,11 +367,12 @@ impl Engine {
 
         for chess_move in ordered_moves {
             let evaluation = -self.alpha_beta(
-                &position.clone().play(&chess_move).unwrap(),
+                position.clone().play(&chess_move).unwrap(),
                 -beta,
                 -alpha,
                 max_depth - 1,
                 1,
+                true,
                 start_time,
                 max_time,
             )?;
@@ -387,9 +413,10 @@ impl Engine {
                         break;
                     }
                 };
-                if (best_evaluation == POSITIVE_INFINITY) || (best_evaluation == NEGATIVE_INFINITY) {
-                    break;
-                }
+            if (best_evaluation == POSITIVE_INFINITY) || (best_evaluation == NEGATIVE_INFINITY) {
+                println!("mate");
+                break;
+            }
             depth += 1;
         }
 

@@ -33,6 +33,6 @@ pub fn evaluate(position: &Chess) -> i32 {
     };
     match position.turn() {
         Color::Black => -evaluation,
-        Color::White => evaluation
+        Color::White => evaluation,
     }
 }
