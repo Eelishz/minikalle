@@ -13,14 +13,14 @@ use transpositiontable::{EvaluationType, TranspositionTable};
 
 #[cfg(test)]
 mod tests {
-    use shakmaty::Chess;
+    use shakmaty::{fen::Fen, Chess};
 
     use super::*;
 
     #[test]
     fn test_evaluation() {
         let position = Chess::new();
-        let evauation = evaluate(&position, 0);
+        let evauation = evaluate(&position);
         assert_eq!(evauation, 0);
     }
 
@@ -31,16 +31,15 @@ mod tests {
         let mut engine = Engine::new();
 
         // Call your alpha-beta function
-        let result = engine
-            .alpha_beta(
-                &position,
-                NEGATIVE_INFINITY,
-                POSITIVE_INFINITY,
-                3,
-                0,
-                Instant::now(),
-                1000,
-            );
+        let result = engine.alpha_beta(
+            &position,
+            NEGATIVE_INFINITY,
+            POSITIVE_INFINITY,
+            3,
+            0,
+            Instant::now(),
+            1000,
+        );
 
         // Assert that the result is as expected
         assert_eq!(result, Some(0));
@@ -53,20 +52,19 @@ mod tests {
         let mut engine = Engine::new();
 
         // Call your alpha-beta function
-        let result = engine
-            .quiesce(
-                &position,
-                NEGATIVE_INFINITY,
-                POSITIVE_INFINITY,
-                0,
-                Instant::now(),
-                1000,
-            );
+        let result = engine.quiesce(
+            &position,
+            NEGATIVE_INFINITY,
+            POSITIVE_INFINITY,
+            0,
+            Instant::now(),
+            1000,
+        );
 
         // Assert that the result is as expected
         assert_eq!(result, Some(0));
     }
-    
+
     #[test]
     fn test_root_search() {
         // Create a test position
@@ -74,16 +72,46 @@ mod tests {
         let mut engine = Engine::new();
 
         // Call your alpha-beta function
-        let result = engine
-            .root_search(
-                &position,
-                3,
-                Instant::now(),
-                1000,
-            ).unwrap();
+        let (_, result) = engine
+            .root_search(&position, 3, Instant::now(), 1000)
+            .unwrap();
 
         // Assert that the result is as expected
-        assert_eq!(result.1, 0);
+        assert_eq!(result, 0);
+    }
+
+    #[test]
+    fn test_mates() {
+        let fen: Fen = "6k1/2R5/8/8/8/3R4/2K5/8 w - - 0 1".parse().unwrap();
+
+        let position: Chess = fen.into_position(shakmaty::CastlingMode::Standard).unwrap();
+
+        let mut engine = Engine::new();
+
+        let (_, uci, _) = engine.find_best_move(position, 1_000);
+
+        assert_eq!(uci.to_string(), "d3d8".to_string());
+    }
+
+    #[test]
+    fn test_captures() {
+        let fen: Fen = "7k/8/8/4p3/3Q4/8/8/K7 w - - 0 1".parse().unwrap();
+
+        let position: Chess = fen.into_position(shakmaty::CastlingMode::Standard).unwrap();
+
+        let mut engine = Engine::new();
+
+        let (_, uci, _) = engine.find_best_move(position, 1_000);
+
+        assert_eq!(uci.to_string(), "d4e5".to_string());
+
+        let fen: Fen = "7k/8/8/4q3/3Q4/8/8/K7 b - - 0 1".parse().unwrap();
+
+        let position: Chess = fen.into_position(shakmaty::CastlingMode::Standard).unwrap();
+
+        let (_, uci, _) = engine.find_best_move(position, 1_000);
+
+        assert_eq!(uci.to_string(), "e5d4".to_string());
     }
 
     #[test]
@@ -105,8 +133,8 @@ const NULL_MOVE: Move = Move::Normal {
     promotion: None,
 };
 
-const POSITIVE_INFINITY: i32 = 9999999;
-const NEGATIVE_INFINITY: i32 = -9999999;
+const POSITIVE_INFINITY: i32 = 100000;
+const NEGATIVE_INFINITY: i32 = -100000;
 
 pub struct Engine {
     tt: TranspositionTable,
@@ -155,7 +183,7 @@ impl Engine {
         &mut self,
         position: &Chess,
         mut alpha: i32,
-        beta: i32,
+        mut beta: i32,
         depth_from_root: u8,
         start_time: Instant,
         max_time: u64,
@@ -166,7 +194,7 @@ impl Engine {
 
         self.nodes_searched += 1;
 
-        let stand_pat = evaluate(&position, depth_from_root);
+        let stand_pat = evaluate(&position);
 
         if stand_pat >= beta {
             return Some(beta);
@@ -249,7 +277,7 @@ impl Engine {
         }
 
         if depth_left == 0 {
-            let evaluation = -self.quiesce(
+            let evaluation = self.quiesce(
                 &position,
                 alpha,
                 beta,
@@ -359,6 +387,9 @@ impl Engine {
                         break;
                     }
                 };
+                if (best_evaluation == POSITIVE_INFINITY) || (best_evaluation == NEGATIVE_INFINITY) {
+                    break;
+                }
             depth += 1;
         }
 
