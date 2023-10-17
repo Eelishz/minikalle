@@ -60,18 +60,43 @@ impl UciProtocol {
     }
 
     fn handle_fen(&mut self, message: &String) {
-        let fen: Fen = message[13..].parse().expect("Fen failed");
+        // dirty hack to allow 'moves' keyword after fen
+        let mut i = 13;
+        let mut moves: bool = false;
+        for c in message[13..].chars() {
+            i += 1;
+            if c == 'm' {
+                moves = true;
+                break;
+            }
+        }
+
+        let mut moves_index: usize = 0;
+        for (i, cmd) in message.split_whitespace().enumerate() {
+            if cmd == "moves" {
+                moves_index = i + 1;
+            }
+        }
+
+        let fen: Fen = if moves {
+            message[13..i - 2].parse().expect("Fen failed")
+        } else {
+            message[13..].parse().expect("Fen failed")
+        };
+
         let pos: Chess = fen
             .into_position(shakmaty::CastlingMode::Standard)
             .expect("Fen failed");
         self.position = pos;
+        if moves {
+            self.handle_moves(message, moves_index)
+        }
     }
 
-    fn handle_moves(&mut self, message: &String) {
+    fn handle_moves(&mut self, message: &String, skip_val: usize) {
         let moves = message.as_str().split_whitespace();
-        self.position = Chess::new();
 
-        for uci_str in moves.skip(3) {
+        for uci_str in moves.skip(skip_val) {
             let uci: Uci = uci_str.parse().expect("UCI parse failed");
             let chess_move = uci.to_move(&self.position).expect("UCI move failed");
             self.position = self.position.clone().play(&chess_move).unwrap();
@@ -90,12 +115,15 @@ impl UciProtocol {
             .nth(2)
             .expect("Splitting string failed")
         {
-            "moves" => self.handle_moves(message),
+            "moves" => {
+                self.position = Chess::new();
+                self.handle_moves(message, 3);
+            }
             _ => return,
         }
     }
     //position fen ...
-    fn handle_position(&mut self, message: &String) {
+    pub fn handle_position(&mut self, message: &String) {
         match message
             .as_str()
             .split_whitespace()

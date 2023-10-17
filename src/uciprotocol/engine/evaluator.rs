@@ -89,7 +89,7 @@ fn parse_square_tables(board: &Board) -> i32 {
                 Color::Black => role_color_bitboard
                     .into_iter()
                     .fold(0, |inner_acc, square| {
-                        inner_acc - evaluation_table[square as usize]
+                        inner_acc + evaluation_table[square as usize]
                     }),
             }
         })
@@ -112,7 +112,7 @@ fn count_pieces(board: &Board) -> i32 {
 }
 
 pub fn evaluate(position: &Chess, depth_from_root: u8) -> i32 {
-    let evaluation = match position.outcome() {
+    match position.outcome() {
         Some(Outcome::Draw) => return 0,
         Some(Outcome::Decisive { winner }) => {
             if winner == Color::White {
@@ -122,10 +122,5 @@ pub fn evaluate(position: &Chess, depth_from_root: u8) -> i32 {
             }
         }
         None => count_pieces(position.board()),
-    };
-    if position.turn() == Color::Black {
-        -evaluation
-    } else {
-        evaluation
     }
 }

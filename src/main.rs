@@ -20,9 +20,7 @@ fn main() {
 
     let mut uci_protocol = uciprotocol::UciProtocol::new();
 
-    //for i in 0..100 {
-    //    uci_protocol.go(&"go mtime 50000".to_string());
-    //}
+    //uci_protocol.handle_position(&"position fen 8/3P4/1p3b1p/p7/P7/1P3NPP/4p1K1/3k4 w - - 0 1 moves d7d8q".to_string());
 
     uci_protocol.start()
 }

@@ -1,14 +1,101 @@
 use log::info;
 use rand::seq::SliceRandom;
 use shakmaty::zobrist::{Zobrist64, ZobristHash};
+use shakmaty::Color;
 use shakmaty::{uci::Uci, CastlingMode, Chess, Move, Position, Role, Square};
 use std::io::prelude::*;
 use std::str::FromStr;
 use std::{collections::HashMap, fs::File, time::Instant};
 mod evaluator;
 mod transpositiontable;
-use transpositiontable::TranspositionTable;
 use evaluator::evaluate;
+use transpositiontable::{EvaluationType, TranspositionTable};
+
+#[cfg(test)]
+mod tests {
+    use shakmaty::Chess;
+
+    use super::*;
+
+    #[test]
+    fn test_evaluation() {
+        let position = Chess::new();
+        let evauation = evaluate(&position, 0);
+        assert_eq!(evauation, 0);
+    }
+
+    #[test]
+    fn test_alpha_beta() {
+        // Create a test position
+        let position = Chess::new(); // You may want to set up a specific test position here
+        let mut engine = Engine::new();
+
+        // Call your alpha-beta function
+        let result = engine
+            .alpha_beta(
+                &position,
+                NEGATIVE_INFINITY,
+                POSITIVE_INFINITY,
+                3,
+                0,
+                Instant::now(),
+                1000,
+            );
+
+        // Assert that the result is as expected
+        assert_eq!(result, Some(0));
+    }
+
+    #[test]
+    fn test_quiesce() {
+        // Create a test position
+        let position = Chess::new(); // You may want to set up a specific test position here
+        let mut engine = Engine::new();
+
+        // Call your alpha-beta function
+        let result = engine
+            .quiesce(
+                &position,
+                NEGATIVE_INFINITY,
+                POSITIVE_INFINITY,
+                0,
+                Instant::now(),
+                1000,
+            );
+
+        // Assert that the result is as expected
+        assert_eq!(result, Some(0));
+    }
+    
+    #[test]
+    fn test_root_search() {
+        // Create a test position
+        let position = Chess::new(); // You may want to set up a specific test position here
+        let mut engine = Engine::new();
+
+        // Call your alpha-beta function
+        let result = engine
+            .root_search(
+                &position,
+                3,
+                Instant::now(),
+                1000,
+            ).unwrap();
+
+        // Assert that the result is as expected
+        assert_eq!(result.1, 0);
+    }
+
+    #[test]
+    fn test_move_ordering() {
+        let position = Chess::new();
+        let engine = Engine::new();
+
+        let result = engine.order_moves(&position);
+
+        assert_eq!(result.len(), position.legal_moves().len());
+    }
+}
 
 const NULL_MOVE: Move = Move::Normal {
     role: Role::Pawn,
@@ -25,6 +112,7 @@ pub struct Engine {
     tt: TranspositionTable,
     book: HashMap<u64, Vec<String>>,
     nodes_searched: u64,
+    side: Color,
 }
 
 impl Engine {
@@ -36,9 +124,10 @@ impl Engine {
 
         let book = serde_json::from_str(&openings).unwrap();
         Engine {
-            tt: TranspositionTable::new(),
+            tt: TranspositionTable::new(128),
             book,
             nodes_searched: 0,
+            side: Color::White,
         }
     }
 
@@ -78,6 +167,7 @@ impl Engine {
         self.nodes_searched += 1;
 
         let stand_pat = evaluate(&position, depth_from_root);
+
         if stand_pat >= beta {
             return Some(beta);
         }
@@ -116,6 +206,23 @@ impl Engine {
         0
     }
 
+    fn probe_table(&self, key: &u64, depth_left: u8, alpha: i32, beta: i32) -> Option<i32> {
+        let transposition = self.tt.get(key)?;
+        let evaluation = transposition.evaluation;
+        if transposition.depth_left >= depth_left {
+            if transposition.evaluation_type == EvaluationType::Exact {
+                return Some(evaluation);
+            }
+            if (transposition.evaluation_type == EvaluationType::Alpha) && (evaluation <= alpha) {
+                return Some(alpha);
+            }
+            if (transposition.evaluation_type == EvaluationType::Beta) && (evaluation >= beta) {
+                return Some(beta);
+            }
+        }
+        None
+    }
+
     fn alpha_beta(
         &mut self,
         position: &Chess,
@@ -130,23 +237,19 @@ impl Engine {
             return None;
         }
 
+        self.nodes_searched += 1;
+
         let zobrist = position
             .zobrist_hash::<Zobrist64>(shakmaty::EnPassantMode::Legal)
             .0;
 
-        self.nodes_searched += 1;
+        let table_lookup = self.probe_table(&zobrist, depth_left, alpha, beta);
+        if table_lookup.is_some() {
+            return table_lookup;
+        }
 
-        match self.tt.get(zobrist) {
-            Some((evaluation, depth)) => {
-                if depth >= depth_left {
-                    return Some(evaluation);
-                }
-            }
-            None => (),
-        };
-
-        if (depth_left == 0) || position.is_game_over() {
-            let evaluation = self.quiesce(
+        if depth_left == 0 {
+            let evaluation = -self.quiesce(
                 &position,
                 alpha,
                 beta,
@@ -154,7 +257,9 @@ impl Engine {
                 start_time,
                 max_time,
             )?;
-            self.tt.insert(zobrist, evaluation, depth_left);
+
+            self.tt
+                .insert(zobrist, evaluation, depth_left, EvaluationType::Exact);
             return Some(evaluation);
         }
 
@@ -173,7 +278,8 @@ impl Engine {
                 max_time,
             )?;
             if score >= beta {
-                self.tt.insert(zobrist, beta, depth_left);
+                self.tt
+                    .insert(zobrist, beta, depth_left, EvaluationType::Beta);
                 return Some(beta);
             }
             if score > alpha {
@@ -181,7 +287,8 @@ impl Engine {
             }
         }
 
-        self.tt.insert(zobrist, alpha, depth_left);
+        self.tt
+            .insert(zobrist, alpha, depth_left, EvaluationType::Alpha);
         return Some(alpha);
     }
 
@@ -242,7 +349,7 @@ impl Engine {
 
         self.nodes_searched = 0;
 
-        while depth <= max_depth {
+        while depth < max_depth {
             info!("searching {} ply deep", depth);
             (best_move, best_evaluation) =
                 match self.root_search(&position, depth, start_time, max_time) {
@@ -264,6 +371,7 @@ impl Engine {
     }
 
     pub fn find_best_move(&mut self, position: Chess, max_time: u64) -> (Move, Uci, i32) {
+        self.side = position.turn();
         let zobrist = position.zobrist_hash::<Zobrist64>(shakmaty::EnPassantMode::Legal);
         if self.book.contains_key(&zobrist.0) {
             info!("using book");
