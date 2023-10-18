@@ -20,5 +20,9 @@ fn main() {
 
     let mut uci_protocol = uciprotocol::UciProtocol::new();
 
+    //for _ in 1..100 {
+    //    uci_protocol.go(&"go mtime 10000".to_string());
+    //}
+
     uci_protocol.start()
 }

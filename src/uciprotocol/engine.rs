@@ -53,7 +53,7 @@ mod tests {
 
         // Call your alpha-beta function
         let result = engine.quiesce(
-            &position,
+            position,
             NEGATIVE_INFINITY,
             POSITIVE_INFINITY,
             0,
@@ -181,7 +181,7 @@ impl Engine {
 
     fn quiesce(
         &mut self,
-        position: &Chess,
+        position: Chess,
         mut alpha: i32,
         beta: i32,
         depth_from_root: u8,
@@ -204,8 +204,10 @@ impl Engine {
         }
 
         for chess_move in position.capture_moves() {
+            let mut new_position = position.clone();
+            new_position.play_unchecked(&chess_move);
             let score = -self.quiesce(
-                &position.clone().play(&chess_move).unwrap(),
+                new_position,
                 -beta,
                 -alpha,
                 depth_from_root + 1,
@@ -278,7 +280,7 @@ impl Engine {
 
         if depth_left == 0 {
             let evaluation = self.quiesce(
-                &position,
+                position,
                 alpha,
                 beta,
                 depth_from_root + 1,
@@ -296,8 +298,10 @@ impl Engine {
         for chess_move in moves {
             let extensions = self.calculate_extension(&position, &chess_move);
 
+            let mut new_position = position.clone();
+            new_position.play_unchecked(&chess_move);
             let score = -self.alpha_beta(
-                position.clone().play(&chess_move).unwrap(),
+                new_position,
                 -beta,
                 -alpha,
                 depth_left + extensions - 1,
@@ -323,7 +327,7 @@ impl Engine {
     fn root_search(
         &mut self,
         position: &Chess,
-        max_depth: u8,
+        depth_left: u8,
         start_time: Instant,
         max_time: u64,
     ) -> Option<(Move, i32)> {
@@ -341,11 +345,13 @@ impl Engine {
         let mut best_move = position.legal_moves()[0].clone();
 
         for chess_move in ordered_moves {
+            let mut new_position = position.clone();
+            new_position.play_unchecked(&chess_move);
             let evaluation = -self.alpha_beta(
-                position.clone().play(&chess_move).unwrap(),
+                new_position,
                 -beta,
                 -alpha,
-                max_depth - 1,
+                depth_left - 1,
                 1,
                 start_time,
                 max_time,
@@ -388,6 +394,7 @@ impl Engine {
                     }
                 };
             if (best_evaluation == POSITIVE_INFINITY) || (best_evaluation == NEGATIVE_INFINITY) {
+                println!("mate in {}", depth);
                 break;
             }
             depth += 1;
