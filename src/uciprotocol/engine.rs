@@ -1,7 +1,6 @@
 use log::info;
 use rand::seq::SliceRandom;
 use shakmaty::zobrist::{Zobrist64, ZobristHash};
-use shakmaty::Color;
 use shakmaty::{uci::Uci, CastlingMode, Chess, Move, Position, Role, Square};
 use std::io::prelude::*;
 use std::str::FromStr;
@@ -82,15 +81,32 @@ mod tests {
 
     #[test]
     fn test_mates() {
+        // Some easy checkmates
+        let mut engine = Engine::new();
+
         let fen: Fen = "6k1/2R5/8/8/8/3R4/2K5/8 w - - 0 1".parse().unwrap();
 
         let position: Chess = fen.into_position(shakmaty::CastlingMode::Standard).unwrap();
 
-        let mut engine = Engine::new();
-
         let (_, uci, _) = engine.find_best_move(position, 1_000);
 
         assert_eq!(uci.to_string(), "d3d8".to_string());
+
+        let fen: Fen = "6k1/2p4p/2p4b/p7/3P1p2/2P2P2/PP2b1KP/4q3 b - - 9 35".parse().unwrap();
+
+        let position: Chess = fen.into_position(shakmaty::CastlingMode::Standard).unwrap();
+
+        let (_, uci, _) = engine.find_best_move(position, 1_000);
+
+        assert_eq!(uci.to_string(), "e1f1".to_string());
+
+        let fen: Fen = "6k1/2p4p/b1p1q2b/p7/3P1pp1/2P2P2/PP4PP/4B1K1 b - - 1 29".parse().unwrap();
+
+        let position: Chess = fen.into_position(shakmaty::CastlingMode::Standard).unwrap();
+
+        let (_, uci, _) = engine.find_best_move(position, 1_000);
+
+        assert_eq!(uci.to_string(), "e6e1".to_string());
     }
 
     #[test]
@@ -140,7 +156,6 @@ pub struct Engine {
     tt: TranspositionTable,
     book: HashMap<u64, Vec<String>>,
     nodes_searched: u64,
-    side: Color,
 }
 
 impl Engine {
@@ -155,7 +170,6 @@ impl Engine {
             tt: TranspositionTable::new(128),
             book,
             nodes_searched: 0,
-            side: Color::White,
         }
     }
 
@@ -394,7 +408,6 @@ impl Engine {
                     }
                 };
             if (best_evaluation == POSITIVE_INFINITY) || (best_evaluation == NEGATIVE_INFINITY) {
-                println!("mate in {}", depth);
                 break;
             }
             depth += 1;
@@ -409,7 +422,6 @@ impl Engine {
     }
 
     pub fn find_best_move(&mut self, position: Chess, max_time: u64) -> (Move, Uci, i32) {
-        self.side = position.turn();
         let zobrist = position.zobrist_hash::<Zobrist64>(shakmaty::EnPassantMode::Legal);
         if self.book.contains_key(&zobrist.0) {
             info!("using book");
