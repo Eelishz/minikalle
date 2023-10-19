@@ -29,14 +29,13 @@ impl UciProtocol {
             .nth(1)
             .expect("Think time error")
         {
-            "mtime" => {
+            "mtime" | "movetime" => {
                 return message
                     .split_whitespace()
                     .nth(2)
                     .unwrap()
                     .parse::<u64>()
                     .unwrap()
-                    / 20;
             }
             "wtime" => {
                 if self.playing_as == Color::White {

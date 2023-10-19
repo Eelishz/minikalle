@@ -10,9 +10,12 @@ mod transpositiontable;
 use evaluator::evaluate;
 use transpositiontable::{EvaluationType, TranspositionTable};
 
+extern crate test;
+
 #[cfg(test)]
 mod tests {
     use shakmaty::{fen::Fen, Chess};
+    use test::{black_box, Bencher};
 
     use super::*;
 
@@ -72,9 +75,11 @@ mod tests {
         let mut engine = Engine::new();
 
         // Call your alpha-beta function
-        let (_, result) = engine
-            .root_search(&position, 3, vec![], Instant::now(), 1000)
-            .unwrap();
+        let (_, result) = black_box(
+            engine
+                .root_search(&position, 3, vec![], Instant::now(), 1000)
+                .unwrap(),
+        );
 
         // Assert that the result is as expected
         assert!(result >= 0);
@@ -143,6 +148,14 @@ mod tests {
         let result = engine.order_moves(&position);
 
         assert_eq!(result.len(), position.legal_moves().len());
+    }
+
+    #[bench]
+    fn bench_root_search(b: &mut Bencher) {
+        let mut engine = Engine::new();
+        let position = Chess::new();
+
+        b.iter(|| engine.root_search(&position, 5, vec![], Instant::now(), 1_000_000))
     }
 }
 
@@ -449,6 +462,12 @@ impl Engine {
                     break;
                 }
             };
+            let nps = self.nodes_searched / (start_time.elapsed().as_millis() as u64 + 1) * 1000;
+            println!("info score cp {}", best_evaluation);
+            println!(
+                "info nodes {} nps {} depth {}",
+                self.nodes_searched, nps, depth
+            );
             if (best_evaluation == POSITIVE_INFINITY) || (best_evaluation == NEGATIVE_INFINITY) {
                 break;
             }
@@ -456,6 +475,7 @@ impl Engine {
         }
 
         let nps = self.nodes_searched / (start_time.elapsed().as_millis() as u64 + 1) * 1000;
+        println!("info score cp {}", best_evaluation);
         println!(
             "info nodes {} nps {} depth {}",
             self.nodes_searched, nps, depth

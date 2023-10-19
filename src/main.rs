@@ -1,4 +1,4 @@
-#![feature(slice_partition_dedup)]
+#![feature(slice_partition_dedup, test)]
 
 mod uciprotocol;
 
@@ -21,10 +21,6 @@ fn main() {
     log4rs::init_config(config).unwrap();
 
     let mut uci_protocol = uciprotocol::UciProtocol::new();
-
-    //for _ in 1..100 {
-    //    uci_protocol.go(&"go mtime 10000".to_string());
-    //}
 
     uci_protocol.start()
 }
