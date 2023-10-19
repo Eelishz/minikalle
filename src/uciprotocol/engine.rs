@@ -36,6 +36,7 @@ mod tests {
             POSITIVE_INFINITY,
             3,
             0,
+            vec![],
             Instant::now(),
             1000,
         );
@@ -72,7 +73,7 @@ mod tests {
 
         // Call your alpha-beta function
         let (_, result) = engine
-            .root_search(&position, 3, Instant::now(), 1000)
+            .root_search(&position, 3, vec![], Instant::now(), 1000)
             .unwrap();
 
         // Assert that the result is as expected
@@ -92,7 +93,9 @@ mod tests {
 
         assert_eq!(uci.to_string(), "d3d8".to_string());
 
-        let fen: Fen = "6k1/2p4p/2p4b/p7/3P1p2/2P2P2/PP2b1KP/4q3 b - - 9 35".parse().unwrap();
+        let fen: Fen = "6k1/2p4p/2p4b/p7/3P1p2/2P2P2/PP2b1KP/4q3 b - - 9 35"
+            .parse()
+            .unwrap();
 
         let position: Chess = fen.into_position(shakmaty::CastlingMode::Standard).unwrap();
 
@@ -100,7 +103,9 @@ mod tests {
 
         assert_eq!(uci.to_string(), "e1f1".to_string());
 
-        let fen: Fen = "6k1/2p4p/b1p1q2b/p7/3P1pp1/2P2P2/PP4PP/4B1K1 b - - 1 29".parse().unwrap();
+        let fen: Fen = "6k1/2p4p/b1p1q2b/p7/3P1pp1/2P2P2/PP4PP/4B1K1 b - - 1 29"
+            .parse()
+            .unwrap();
 
         let position: Chess = fen.into_position(shakmaty::CastlingMode::Standard).unwrap();
 
@@ -156,6 +161,7 @@ pub struct Engine {
     tt: TranspositionTable,
     book: HashMap<u64, Vec<String>>,
     nodes_searched: u64,
+    repetition_table: Vec<u64>,
 }
 
 impl Engine {
@@ -170,6 +176,7 @@ impl Engine {
             tt: TranspositionTable::new(128),
             book,
             nodes_searched: 0,
+            repetition_table: vec![],
         }
     }
 
@@ -240,6 +247,12 @@ impl Engine {
         Some(alpha)
     }
 
+    fn threefold_rule(&self, repetition_table: &mut Vec<u64>) -> bool {
+        repetition_table.sort_unstable();
+        let (_, dups) = repetition_table.partition_dedup();
+        dups.len() >= 3
+    }
+
     fn calculate_extension(&self, position: &Chess, chess_move: &Move) -> u8 {
         if position.is_check() {
             return 1;
@@ -274,6 +287,7 @@ impl Engine {
         beta: i32,
         depth_left: u8,
         depth_from_root: u8,
+        mut position_table: Vec<u64>,
         start_time: Instant,
         max_time: u64,
     ) -> Option<i32> {
@@ -287,9 +301,15 @@ impl Engine {
             .zobrist_hash::<Zobrist64>(shakmaty::EnPassantMode::Legal)
             .0;
 
+        position_table.push(zobrist);
+
         let table_lookup = self.probe_table(&zobrist, depth_left, alpha, beta);
         if table_lookup.is_some() {
             return table_lookup;
+        }
+
+        if self.threefold_rule(&mut position_table) {
+            return Some(0);
         }
 
         if depth_left == 0 {
@@ -320,6 +340,11 @@ impl Engine {
                 -alpha,
                 depth_left + extensions - 1,
                 depth_from_root + 1,
+                if chess_move.is_capture() {
+                    vec![]
+                } else {
+                    position_table.clone()
+                },
                 start_time,
                 max_time,
             )?;
@@ -342,6 +367,7 @@ impl Engine {
         &mut self,
         position: &Chess,
         depth_left: u8,
+        mut repetition_table: Vec<u64>,
         start_time: Instant,
         max_time: u64,
     ) -> Option<(Move, i32)> {
@@ -350,6 +376,12 @@ impl Engine {
         }
 
         self.nodes_searched += 1;
+
+        let zobrist = position
+            .zobrist_hash::<Zobrist64>(shakmaty::EnPassantMode::Legal)
+            .0;
+
+        repetition_table.push(zobrist);
 
         let mut alpha = NEGATIVE_INFINITY;
         let beta = POSITIVE_INFINITY;
@@ -367,6 +399,11 @@ impl Engine {
                 -alpha,
                 depth_left - 1,
                 1,
+                if chess_move.is_capture() {
+                    vec![]
+                } else {
+                    repetition_table.clone()
+                },
                 start_time,
                 max_time,
             )?;
@@ -399,14 +436,19 @@ impl Engine {
 
         while depth < max_depth {
             info!("searching {} ply deep", depth);
-            (best_move, best_evaluation) =
-                match self.root_search(&position, depth, start_time, max_time) {
-                    Some(val) => val,
-                    None => {
-                        info!("search cancelled (time)");
-                        break;
-                    }
-                };
+            (best_move, best_evaluation) = match self.root_search(
+                &position,
+                depth,
+                self.repetition_table.clone(),
+                start_time,
+                max_time,
+            ) {
+                Some(val) => val,
+                None => {
+                    info!("search cancelled (time)");
+                    break;
+                }
+            };
             if (best_evaluation == POSITIVE_INFINITY) || (best_evaluation == NEGATIVE_INFINITY) {
                 break;
             }
@@ -419,6 +461,10 @@ impl Engine {
             self.nodes_searched, nps, depth
         );
         (best_move, best_evaluation)
+    }
+
+    pub fn clear_repetition_table(&mut self) {
+        self.repetition_table.clear();
     }
 
     pub fn find_best_move(&mut self, position: Chess, max_time: u64) -> (Move, Uci, i32) {

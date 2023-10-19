@@ -1,3 +1,5 @@
+#![feature(slice_partition_dedup)]
+
 mod uciprotocol;
 
 use log::LevelFilter;

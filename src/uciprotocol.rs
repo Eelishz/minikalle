@@ -18,7 +18,9 @@ impl UciProtocol {
         }
     }
 
-    fn new_game(&mut self, _message: &String) {}
+    fn new_game(&mut self, _message: &String) {
+        self.chess_engine.clear_repetition_table();
+    }
 
     fn calc_think_time(&mut self, message: &String) -> u64 {
         match message
@@ -124,6 +126,7 @@ impl UciProtocol {
     }
     //position fen ...
     pub fn handle_position(&mut self, message: &String) {
+        self.chess_engine.clear_repetition_table();
         match message
             .as_str()
             .split_whitespace()
