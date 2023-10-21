@@ -479,14 +479,17 @@ impl Engine {
                 "info nodes {} nps {} depth {}",
                 self.nodes_searched, nps, depth
             );
-            if (best_evaluation == POSITIVE_INFINITY) || (best_evaluation == NEGATIVE_INFINITY) {
+            if best_evaluation == POSITIVE_INFINITY {
                 println!("info score mate {}", depth);
+            } else if best_evaluation == NEGATIVE_INFINITY {
+                println!("info score mate -{}", depth);
+            } else {
+                println!("info score cp {}", best_evaluation);
             }
             depth += 1;
         }
 
         let nps = self.nodes_searched / (start_time.elapsed().as_millis() as u64 + 1) * 1000;
-        println!("info score cp {}", best_evaluation);
         println!(
             "info nodes {} nps {} depth {}",
             self.nodes_searched, nps, depth
