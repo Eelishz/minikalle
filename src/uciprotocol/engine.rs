@@ -440,7 +440,7 @@ impl Engine {
     ) -> (Move, i32) {
         let start_time = Instant::now();
 
-        let mut best_move = NULL_MOVE;
+        let mut best_move = position.legal_moves()[0].clone();
         let mut best_evaluation = NEGATIVE_INFINITY;
 
         let mut depth: u8 = 1;
