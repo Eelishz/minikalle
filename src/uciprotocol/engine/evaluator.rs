@@ -2,26 +2,26 @@ use shakmaty::{Board, Chess, Color, Outcome, Position};
 mod squaretables;
 use squaretables::parse_tables;
 
-const POSITIVE_INFINITY: i32 = 100000;
-const NEGATIVE_INFINITY: i32 = -100000;
+const POSITIVE_INFINITY: i16 = 32767;
+const NEGATIVE_INFINITY: i16 = -32767;
 
-fn count_pieces(board: &Board) -> i32 {
+fn count_pieces(board: &Board) -> i16 {
     let white_material = board.material_side(Color::White);
     let black_material = board.material_side(Color::Black);
 
-    white_material.pawn as i32 * 100
-        + white_material.knight as i32 * 300
-        + white_material.bishop as i32 * 300
-        + white_material.rook as i32 * 500
-        + white_material.queen as i32 * 900
-        - black_material.pawn as i32 * 100
-        - black_material.knight as i32 * 300
-        - black_material.bishop as i32 * 300
-        - black_material.rook as i32 * 500
-        - black_material.queen as i32 * 900
+    white_material.pawn as i16 * 100
+        + white_material.knight as i16 * 300
+        + white_material.bishop as i16 * 300
+        + white_material.rook as i16 * 500
+        + white_material.queen as i16 * 900
+        - black_material.pawn as i16 * 100
+        - black_material.knight as i16 * 300
+        - black_material.bishop as i16 * 300
+        - black_material.rook as i16 * 500
+        - black_material.queen as i16 * 900
 }
 
-pub fn evaluate(position: &Chess) -> i32 {
+pub fn evaluate(position: &Chess) -> i16 {
     let evaluation = match position.outcome() {
         Some(Outcome::Draw) => return 0,
         Some(Outcome::Decisive { winner }) => {

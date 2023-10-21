@@ -167,8 +167,8 @@ const NULL_MOVE: Move = Move::Normal {
     promotion: None,
 };
 
-const POSITIVE_INFINITY: i32 = 100000;
-const NEGATIVE_INFINITY: i32 = -100000;
+const POSITIVE_INFINITY: i16 = 32767;
+const NEGATIVE_INFINITY: i16 = -32767;
 
 pub struct Engine {
     tt: TranspositionTable,
@@ -216,12 +216,12 @@ impl Engine {
     fn quiesce(
         &mut self,
         position: Chess,
-        mut alpha: i32,
-        beta: i32,
+        mut alpha: i16,
+        beta: i16,
         depth_from_root: u8,
         start_time: Instant,
         max_time: u64,
-    ) -> Option<i32> {
+    ) -> Option<i16> {
         if (start_time.elapsed().as_millis() as u64) > max_time {
             return None;
         }
@@ -261,6 +261,9 @@ impl Engine {
     }
 
     fn threefold_rule(&self, repetition_table: &mut Vec<u64>) -> bool {
+        return false;
+
+        //TODO: make this work
         let mut map: HashMap<u64, u8> = HashMap::new();
 
         for pos in repetition_table {
@@ -270,7 +273,7 @@ impl Engine {
                 map.insert(*pos, 1);
             }
         }
-        
+
         map.values().max().unwrap() > &3
     }
 
@@ -284,7 +287,7 @@ impl Engine {
         0
     }
 
-    fn probe_table(&self, key: &u64, depth_left: u8, alpha: i32, beta: i32) -> Option<i32> {
+    fn probe_table(&self, key: &u64, depth_left: u8, alpha: i16, beta: i16) -> Option<i16> {
         let transposition = self.tt.get(key)?;
         let evaluation = transposition.evaluation;
         if transposition.depth_left >= depth_left {
@@ -304,14 +307,14 @@ impl Engine {
     fn alpha_beta(
         &mut self,
         position: Chess,
-        mut alpha: i32,
-        beta: i32,
+        mut alpha: i16,
+        beta: i16,
         depth_left: u8,
         depth_from_root: u8,
         mut position_table: Vec<u64>,
         start_time: Instant,
         max_time: u64,
-    ) -> Option<i32> {
+    ) -> Option<i16> {
         if (start_time.elapsed().as_millis() as u64) > max_time {
             return None;
         }
@@ -391,7 +394,7 @@ impl Engine {
         mut repetition_table: Vec<u64>,
         start_time: Instant,
         max_time: u64,
-    ) -> Option<(Move, i32)> {
+    ) -> Option<(Move, i16)> {
         if (start_time.elapsed().as_millis() as u64) > max_time {
             return None;
         }
@@ -445,7 +448,7 @@ impl Engine {
         position: Chess,
         max_time: u64,
         max_depth: u8,
-    ) -> (Move, i32) {
+    ) -> (Move, i16) {
         let start_time = Instant::now();
 
         let mut best_move = position.legal_moves()[0].clone();
@@ -477,7 +480,7 @@ impl Engine {
                 self.nodes_searched, nps, depth
             );
             if (best_evaluation == POSITIVE_INFINITY) || (best_evaluation == NEGATIVE_INFINITY) {
-                break;
+                println!("info score mate {}", depth);
             }
             depth += 1;
         }
@@ -495,7 +498,7 @@ impl Engine {
         self.repetition_table.clear();
     }
 
-    pub fn find_best_move(&mut self, position: Chess, max_time: u64) -> (Move, Uci, i32) {
+    pub fn find_best_move(&mut self, position: Chess, max_time: u64) -> (Move, Uci, i16) {
         let zobrist = position.zobrist_hash::<Zobrist64>(shakmaty::EnPassantMode::Legal);
         if self.book.contains_key(&zobrist.0) {
             info!("using book");

@@ -10,7 +10,7 @@ pub enum EvaluationType {
 #[derive(Clone, Copy)]
 pub struct Transposition {
     pub key: u64,
-    pub evaluation: i32,
+    pub evaluation: i16,
     pub depth_left: u8,
     pub evaluation_type: EvaluationType,
 }
@@ -50,7 +50,7 @@ impl TranspositionTable {
     pub fn insert(
         &mut self,
         key: u64,
-        evaluation: i32,
+        evaluation: i16,
         depth_left: u8,
         evaluation_type: EvaluationType,
     ) {
