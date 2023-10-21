@@ -481,6 +481,7 @@ impl Engine {
             );
             if best_evaluation == POSITIVE_INFINITY {
                 println!("info score mate {}", depth);
+                break
             } else if best_evaluation == NEGATIVE_INFINITY {
                 println!("info score mate -{}", depth);
             } else {
