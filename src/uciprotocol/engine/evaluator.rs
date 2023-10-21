@@ -33,6 +33,9 @@ pub fn evaluate(position: &Chess) -> i32 {
         }
         None => count_pieces(position.board()) + parse_tables(position.board()),
     };
+    if position.is_stalemate() {
+        return 0;
+    }
     match position.turn() {
         Color::Black => -evaluation,
         Color::White => evaluation,

@@ -261,9 +261,17 @@ impl Engine {
     }
 
     fn threefold_rule(&self, repetition_table: &mut Vec<u64>) -> bool {
-        repetition_table.sort_unstable();
-        let (_, dups) = repetition_table.partition_dedup();
-        dups.len() >= 3
+        let mut map: HashMap<u64, u8> = HashMap::new();
+
+        for pos in repetition_table {
+            if map.contains_key(&pos) {
+                map.insert(*pos, map.get(&pos).unwrap() + 1);
+            } else {
+                map.insert(*pos, 1);
+            }
+        }
+        
+        map.values().max().unwrap() > &3
     }
 
     fn calculate_extension(&self, position: &Chess, chess_move: &Move) -> u8 {
