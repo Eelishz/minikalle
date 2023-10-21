@@ -1,14 +1,15 @@
 use log::info;
 use rand::seq::SliceRandom;
 use shakmaty::zobrist::{Zobrist64, ZobristHash};
-use shakmaty::{uci::Uci, CastlingMode, Chess, Move, Position, Role, Square};
-use std::io::prelude::*;
+use shakmaty::{uci::Uci, CastlingMode, Chess, Move, Position};
 use std::str::FromStr;
-use std::{collections::HashMap, fs::File, time::Instant};
+use std::{collections::HashMap, time::Instant};
 mod evaluator;
 mod transpositiontable;
+mod openings;
 use evaluator::evaluate;
 use transpositiontable::{EvaluationType, TranspositionTable};
+use openings::OPENINGS;
 
 extern crate test;
 
@@ -159,14 +160,6 @@ mod tests {
     }
 }
 
-const NULL_MOVE: Move = Move::Normal {
-    role: Role::Pawn,
-    from: Square::A1,
-    capture: None,
-    to: Square::A1,
-    promotion: None,
-};
-
 const POSITIVE_INFINITY: i16 = 32767;
 const NEGATIVE_INFINITY: i16 = -32767;
 
@@ -179,12 +172,7 @@ pub struct Engine {
 
 impl Engine {
     pub fn new() -> Engine {
-        let mut file = File::open("openings.json").unwrap();
-        let mut openings = String::new();
-
-        file.read_to_string(&mut openings).unwrap();
-
-        let book = serde_json::from_str(&openings).unwrap();
+        let book = serde_json::from_str(&OPENINGS).unwrap();
         Engine {
             tt: TranspositionTable::new(128),
             book,
@@ -261,7 +249,7 @@ impl Engine {
     }
 
     fn threefold_rule(&self, repetition_table: &mut Vec<u64>) -> bool {
-        return false;
+        //return false;
 
         //TODO: make this work
         let mut map: HashMap<u64, u8> = HashMap::new();
@@ -484,6 +472,7 @@ impl Engine {
                 break
             } else if best_evaluation == NEGATIVE_INFINITY {
                 println!("info score mate -{}", depth);
+                break
             } else {
                 println!("info score cp {}", best_evaluation);
             }
