@@ -276,7 +276,7 @@ impl Engine {
             }
         }
 
-        map.values().max().unwrap() > &3
+        map.values().max().unwrap() >= &3
     }
 
     fn calculate_extension(&self, position: &Chess, chess_move: &Move) -> u8 {
