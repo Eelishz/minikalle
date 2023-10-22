@@ -139,6 +139,19 @@ mod tests {
         assert_eq!(result.len(), position.legal_moves().len());
     }
 
+    #[test]
+    fn test_move_repetition() {
+        let engine = Engine::new();
+
+        let position = Chess::new();
+        let zobrist = position.zobrist_hash::<Zobrist64>(shakmaty::EnPassantMode::Legal).0;
+
+        let mut repetition_table = vec![zobrist; 3];
+
+        let result = engine.threefold_rule(&mut repetition_table);
+        
+        assert_eq!(result, true);
+    }
     #[bench]
     fn bench_search(b: &mut Bencher) {
         let position = Chess::new();
@@ -290,9 +303,9 @@ impl Engine {
         Some((best_move, alpha))
     }
 
-    fn threefold_rule(&self, repetition_table: &mut Vec<u64>) -> bool {
+    pub fn threefold_rule(&self, repetition_table: &mut Vec<u64>) -> bool {
         repetition_table.sort_unstable();
-        let mut i = 0;
+        let mut i = 1;
 
         for j in 1..repetition_table.len() {
             if repetition_table[j] == repetition_table[j-1] {
