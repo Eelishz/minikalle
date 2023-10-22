@@ -144,22 +144,24 @@ mod tests {
         let engine = Engine::new();
 
         let position = Chess::new();
-        let zobrist = position.zobrist_hash::<Zobrist64>(shakmaty::EnPassantMode::Legal).0;
+        let zobrist = position
+            .zobrist_hash::<Zobrist64>(shakmaty::EnPassantMode::Legal)
+            .0;
 
         let mut repetition_table = vec![zobrist; 3];
 
         let result = engine.threefold_rule(&mut repetition_table);
-        
+
         assert_eq!(result, true);
     }
     #[bench]
     fn bench_search(b: &mut Bencher) {
         let position = Chess::new();
-        
+
         let alpha = NEGATIVE_INFINITY;
         let beta = POSITIVE_INFINITY;
         let mut engine = Engine::new();
-        
+
         b.iter(|| {
             engine.alpha_beta(
                 position.clone(),
@@ -223,8 +225,7 @@ impl Engine {
         for (i, chess_move) in legal_moves.iter().enumerate() {
             if legal_moves.contains(&hash_move) || (chess_move == &hash_move) {
                 scores[i] = -99999;
-            }
-            else if chess_move.is_capture() {
+            } else if chess_move.is_capture() {
                 let attacker = match chess_move.role() {
                     Role::Pawn => 100,
                     Role::Knight => 300,
@@ -308,10 +309,10 @@ impl Engine {
         let mut i = 1;
 
         for j in 1..repetition_table.len() {
-            if repetition_table[j] == repetition_table[j-1] {
+            if repetition_table[j] == repetition_table[j - 1] {
                 i += 1;
             } else {
-                i = 0;
+                i = 1;
             }
         }
 
