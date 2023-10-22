@@ -35,7 +35,7 @@ mod tests {
         let mut engine = Engine::new();
 
         // Call your alpha-beta function
-        let (best_move, evaluation) = engine
+        let (_, evaluation) = engine
             .alpha_beta(
                 position,
                 NEGATIVE_INFINITY,
@@ -59,7 +59,7 @@ mod tests {
         let mut engine = Engine::new();
 
         // Call your alpha-beta function
-        let (best_move, evaluation) = engine
+        let (_, evaluation) = engine
             .quiesce(
                 position,
                 NEGATIVE_INFINITY,
@@ -141,18 +141,18 @@ mod tests {
 
     #[bench]
     fn bench_search(b: &mut Bencher) {
-        let mut engine = Engine::new();
         let position = Chess::new();
-
+        
         let alpha = NEGATIVE_INFINITY;
         let beta = POSITIVE_INFINITY;
-
+        let mut engine = Engine::new();
+        
         b.iter(|| {
             engine.alpha_beta(
                 position.clone(),
                 alpha,
                 beta,
-                5,
+                3,
                 0,
                 vec![],
                 Instant::now(),
@@ -184,7 +184,7 @@ impl Engine {
     pub fn new() -> Engine {
         let book = serde_json::from_str(&OPENINGS).unwrap();
         Engine {
-            tt: TranspositionTable::new(128),
+            tt: TranspositionTable::new(256),
             book,
             nodes_searched: 0,
             repetition_table: vec![],
@@ -192,7 +192,7 @@ impl Engine {
     }
 
     fn order_moves(&self, position: &Chess) -> Vec<Move> {
-        //MVC-LVA (most valuable capture, least valuable attacker)
+        //MVV-LVA (most valuable capture, least valuable attacker)
         //Hash move
         let legal_moves = position.legal_moves().to_vec();
 
@@ -220,7 +220,7 @@ impl Engine {
                     Role::Queen => 900,
                     Role::King => 2000,
                 };
-                let capture = match chess_move.capture().unwrap() {
+                let victim = match chess_move.capture().unwrap() {
                     Role::Pawn => 100,
                     Role::Knight => 300,
                     Role::Bishop => 300,
@@ -229,7 +229,7 @@ impl Engine {
                     Role::King => 2000,
                 };
 
-                scores[i] = -(capture - attacker);
+                scores[i] = -(victim - attacker);
             }
         }
 
@@ -291,17 +291,18 @@ impl Engine {
     }
 
     fn threefold_rule(&self, repetition_table: &mut Vec<u64>) -> bool {
-        let mut map: HashMap<u64, u8> = HashMap::new();
+        repetition_table.sort_unstable();
+        let mut i = 0;
 
-        for pos in repetition_table {
-            if map.contains_key(&pos) {
-                map.insert(*pos, map.get(&pos).unwrap() + 1);
+        for j in 1..repetition_table.len() {
+            if repetition_table[j] == repetition_table[j-1] {
+                i += 1;
             } else {
-                map.insert(*pos, 1);
+                i = 0;
             }
         }
 
-        map.values().max().unwrap() >= &3
+        i >= 3
     }
 
     fn calculate_extension(&self, position: &Chess, chess_move: &Move) -> u8 {
