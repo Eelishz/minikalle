@@ -17,7 +17,7 @@ extern crate test;
 #[cfg(test)]
 mod tests {
     use shakmaty::{fen::Fen, Chess};
-    use test::{Bencher};
+    use test::Bencher;
 
     use super::*;
 
@@ -192,23 +192,51 @@ impl Engine {
     }
 
     fn order_moves(&self, position: &Chess) -> Vec<Move> {
+        //MVC-LVA (most valuable capture, least valuable attacker)
+        //Hash move
         let legal_moves = position.legal_moves().to_vec();
-        let mut capture_moves = position.capture_moves().to_vec();
-        let mut promotion_moves = position.promotion_moves().to_vec();
-        let mut other_moves: Vec<Move> = vec![];
-        for chess_move in legal_moves {
-            if !capture_moves.contains(&chess_move) || !promotion_moves.contains(&chess_move) {
-                other_moves.append(&mut vec![chess_move])
+
+        let hash_move = match self.tt.get(
+            &position
+                .zobrist_hash::<Zobrist64>(shakmaty::EnPassantMode::Legal)
+                .0,
+        ) {
+            Some(transposition) => transposition.best_move,
+            None => NULL_MOVE,
+        };
+
+        let mut scores = vec![0; legal_moves.len()];
+
+        for (i, chess_move) in legal_moves.iter().enumerate() {
+            if legal_moves.contains(&hash_move) || (chess_move == &hash_move) {
+                scores[i] = -99999;
+            }
+            else if chess_move.is_capture() {
+                let attacker = match chess_move.role() {
+                    Role::Pawn => 100,
+                    Role::Knight => 300,
+                    Role::Bishop => 300,
+                    Role::Rook => 500,
+                    Role::Queen => 900,
+                    Role::King => 2000,
+                };
+                let capture = match chess_move.capture().unwrap() {
+                    Role::Pawn => 100,
+                    Role::Knight => 300,
+                    Role::Bishop => 300,
+                    Role::Rook => 500,
+                    Role::Queen => 900,
+                    Role::King => 2000,
+                };
+
+                scores[i] = -(capture - attacker);
             }
         }
 
-        let mut ordered_moves: Vec<Move> = vec![];
+        let mut sorted_moves: Vec<(&Move, i32)> = legal_moves.iter().zip(scores).collect();
+        sorted_moves.sort_by(|a, b| a.1.cmp(&b.1));
 
-        ordered_moves.append(&mut promotion_moves);
-        ordered_moves.append(&mut capture_moves);
-        ordered_moves.append(&mut other_moves);
-
-        return ordered_moves;
+        return sorted_moves.iter().map(|x| x.0.clone()).collect();
     }
 
     fn quiesce(
@@ -263,9 +291,6 @@ impl Engine {
     }
 
     fn threefold_rule(&self, repetition_table: &mut Vec<u64>) -> bool {
-        //return false;
-
-        //TODO: make this work
         let mut map: HashMap<u64, u8> = HashMap::new();
 
         for pos in repetition_table {
@@ -354,7 +379,7 @@ impl Engine {
 
             let mut new_position = position.clone();
             new_position.play_unchecked(&chess_move);
-            let (search_move, evaluation) = self.alpha_beta(
+            let (_, evaluation) = self.alpha_beta(
                 new_position,
                 -beta,
                 -alpha,
