@@ -150,6 +150,7 @@ impl UciProtocol {
     }
 
     pub fn start(&mut self) {
+        println!("minikalle by Eelis Holmstén");
         let mut message = String::new();
 
         while message != "quit" {
