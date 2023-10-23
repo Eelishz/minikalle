@@ -320,13 +320,14 @@ impl Engine {
     }
 
     fn calculate_extension(&self, position: &Chess, chess_move: &Move) -> u8 {
+        return 0;
         if position.is_check() {
             return 1;
         }
         if chess_move.is_promotion() {
             return 1;
         }
-        0
+        return 0;
     }
 
     fn alpha_beta(
@@ -455,7 +456,7 @@ impl Engine {
 
         while depth < max_depth {
             info!("searching {} ply deep", depth);
-            (best_move, best_evaluation) = match self.alpha_beta(
+            let (search_move, search_evaluation) = match self.alpha_beta(
                 position.clone(),
                 alpha,
                 beta,
@@ -471,6 +472,10 @@ impl Engine {
                     break;
                 }
             };
+            if search_move != NULL_MOVE {
+                best_move = search_move;
+                best_evaluation = search_evaluation;
+            }
             let nps = self.nodes_searched / (start_time.elapsed().as_millis() as u64 + 1) * 1000;
             println!("info score cp {}", best_evaluation);
             println!(
