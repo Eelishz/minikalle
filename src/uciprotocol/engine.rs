@@ -35,7 +35,7 @@ mod tests {
         let mut engine = Engine::new();
 
         // Call your alpha-beta function
-        let (_, evaluation) = engine
+        let evaluation = engine
             .alpha_beta(
                 position,
                 NEGATIVE_INFINITY,
@@ -53,13 +53,28 @@ mod tests {
     }
 
     #[test]
-    fn test_quiesce() {
+    fn test_root_search() {
         // Create a test position
         let position = Chess::new(); // You may want to set up a specific test position here
         let mut engine = Engine::new();
 
         // Call your alpha-beta function
         let (_, evaluation) = engine
+            .root_search(&position, 3, Instant::now(), 1000)
+            .unwrap();
+
+        // Assert that the result is as expected
+        assert!(evaluation >= 0);
+    }
+
+    #[test]
+    fn test_quiesce() {
+        // Create a test position
+        let position = Chess::new(); // You may want to set up a specific test position here
+        let mut engine = Engine::new();
+
+        // Call your alpha-beta function
+        let evaluation = engine
             .quiesce(
                 position,
                 NEGATIVE_INFINITY,
@@ -106,6 +121,16 @@ mod tests {
         let (_, uci, _) = engine.find_best_move(position, 1_000);
 
         assert_eq!(uci.to_string(), "e6e1".to_string());
+
+        let fen: Fen = "4r1k1/ppp2ppp/5n2/6P1/1PP5/2b4P/r7/5K1R b - - 0 33"
+            .parse()
+            .unwrap();
+
+        let position: Chess = fen.into_position(shakmaty::CastlingMode::Standard).unwrap();
+
+        let (_, uci, _) = engine.find_best_move(position, 1_000);
+
+        assert_eq!(uci.to_string(), "e8e1".to_string());
     }
 
     #[test]
@@ -261,19 +286,17 @@ impl Engine {
         depth_from_root: u8,
         start_time: Instant,
         max_time: u64,
-    ) -> Option<(Move, i16)> {
+    ) -> Option<i16> {
         if (start_time.elapsed().as_millis() as u64) > max_time {
             return None;
         }
 
         self.nodes_searched += 1;
 
-        let mut best_move = NULL_MOVE;
-
         let stand_pat = evaluate(&position);
 
         if stand_pat >= beta {
-            return Some((NULL_MOVE, beta));
+            return Some(beta);
         }
         if alpha < stand_pat {
             alpha = stand_pat;
@@ -282,7 +305,7 @@ impl Engine {
         for chess_move in position.capture_moves() {
             let mut new_position = position.clone();
             new_position.play_unchecked(&chess_move);
-            let (_, evaluation) = self.quiesce(
+            let evaluation = -self.quiesce(
                 new_position,
                 -beta,
                 -alpha,
@@ -290,18 +313,16 @@ impl Engine {
                 start_time,
                 max_time,
             )?;
-            let evaluation = -evaluation;
 
             if evaluation >= beta {
-                return Some((chess_move, beta));
+                return Some(beta);
             }
             if evaluation > alpha {
                 alpha = evaluation;
-                best_move = chess_move;
             }
         }
 
-        Some((best_move, alpha))
+        Some(alpha)
     }
 
     pub fn threefold_rule(&self, repetition_table: &mut Vec<u64>) -> bool {
@@ -319,17 +340,6 @@ impl Engine {
         i >= 3
     }
 
-    fn calculate_extension(&self, position: &Chess, chess_move: &Move) -> u8 {
-        return 0;
-        if position.is_check() {
-            return 1;
-        }
-        if chess_move.is_promotion() {
-            return 1;
-        }
-        return 0;
-    }
-
     fn alpha_beta(
         &mut self,
         position: Chess,
@@ -340,7 +350,7 @@ impl Engine {
         mut position_table: Vec<u64>,
         start_time: Instant,
         max_time: u64,
-    ) -> Option<(Move, i16)> {
+    ) -> Option<i16> {
         if (start_time.elapsed().as_millis() as u64) > max_time {
             return None;
         }
@@ -353,17 +363,20 @@ impl Engine {
 
         position_table.push(zobrist);
 
-        let table_lookup = self.tt.probe_table(&zobrist, depth_left, alpha, beta);
-        if table_lookup.is_some() {
-            return table_lookup;
+        if self.threefold_rule(&mut position_table) {
+            return Some(0);
         }
 
-        if self.threefold_rule(&mut position_table) {
-            return Some((NULL_MOVE, 0));
+        let table_lookup = self.tt.probe_table(&zobrist, depth_left, alpha, beta);
+        if table_lookup.is_some() {
+            let mut new_position = position.clone();
+            let chess_move = table_lookup.clone().unwrap().0;
+            new_position.play_unchecked(&chess_move);
+            return Some(table_lookup.unwrap().1);
         }
 
         if depth_left == 0 {
-            let (search_move, evaluation) = self.quiesce(
+            let evaluation = self.quiesce(
                 position,
                 alpha,
                 beta,
@@ -374,38 +387,124 @@ impl Engine {
 
             self.tt.insert(
                 zobrist,
-                search_move.clone(),
+                NULL_MOVE,
                 evaluation,
                 depth_left,
                 EvaluationType::Exact,
             );
-            return Some((search_move, evaluation));
+            return Some(evaluation);
         }
 
         let moves = self.order_moves(&position);
 
         if moves.len() == 0 {
-            return Some((NULL_MOVE, 0));
+            return Some(0);
         }
 
-        let mut best_move = moves[0].clone();
+        let mut best_move = NULL_MOVE;
 
         for chess_move in moves {
-            let extensions = self.calculate_extension(&position, &chess_move);
+
+            if chess_move.is_capture() {
+                position_table.clear();
+            }
 
             let mut new_position = position.clone();
             new_position.play_unchecked(&chess_move);
-            let (_, evaluation) = self.alpha_beta(
+            let evaluation = -self.alpha_beta(
                 new_position,
                 -beta,
                 -alpha,
-                depth_left + extensions - 1,
+                depth_left - 1,
                 depth_from_root + 1,
-                if chess_move.is_capture() {
-                    vec![]
-                } else {
-                    position_table.clone()
-                },
+                position_table.clone(),
+                start_time,
+                max_time,
+            )?;
+            if evaluation >= beta {
+                self.tt.insert(
+                    zobrist,
+                    chess_move.clone(),
+                    beta,
+                    depth_left,
+                    EvaluationType::Beta,
+                );
+                return Some(beta);
+            }
+            if evaluation > alpha {
+                alpha = evaluation;
+                best_move = chess_move;
+            }
+        }
+
+        self.tt.insert(
+            zobrist,
+            best_move,
+            alpha,
+            depth_left,
+            EvaluationType::Alpha,
+        );
+        return Some(alpha);
+    }
+
+    pub fn root_search(
+        &mut self,
+        position: &Chess,
+        depth_left: u8,
+        start_time: Instant,
+        max_time: u64,
+    ) -> Option<(Move, i16)> {
+        if (start_time.elapsed().as_millis() as u64) > max_time {
+            return None;
+        }
+
+        self.nodes_searched += 1;
+
+        let mut position_table = self.repetition_table.clone();
+
+        let mut alpha = NEGATIVE_INFINITY;
+        let beta = POSITIVE_INFINITY;
+
+        let moves = self.order_moves(&position);
+
+        let mut best_move = NULL_MOVE;
+
+        if depth_left == 0 {
+            let mut best_move = NULL_MOVE;
+            let mut best_evaluation = NEGATIVE_INFINITY;
+            for chess_move in moves {
+                let mut new_position = position.clone();
+                new_position.play_unchecked(&chess_move);
+                let evaulation = evaluate(&new_position);
+
+                if evaulation > best_evaluation {
+                    best_move = chess_move.clone();
+                    best_evaluation = evaulation;
+                }
+            }
+            return Some((best_move, best_evaluation));
+        }
+
+        let zobrist = position
+            .zobrist_hash::<Zobrist64>(shakmaty::EnPassantMode::Legal)
+            .0;
+
+        position_table.push(zobrist);
+
+        for chess_move in moves {
+            if chess_move.is_capture() {
+                position_table.clear();
+            }
+
+            let mut new_position = position.clone();
+            new_position.play_unchecked(&chess_move);
+            let evaluation = self.alpha_beta(
+                new_position,
+                -beta,
+                -alpha,
+                depth_left - 1,
+                1,
+                position_table.clone(),
                 start_time,
                 max_time,
             )?;
@@ -426,13 +525,6 @@ impl Engine {
             }
         }
 
-        self.tt.insert(
-            zobrist,
-            best_move.clone(),
-            alpha,
-            depth_left,
-            EvaluationType::Alpha,
-        );
         return Some((best_move, alpha));
     }
 
@@ -451,42 +543,27 @@ impl Engine {
 
         self.nodes_searched = 0;
 
-        let alpha = NEGATIVE_INFINITY;
-        let beta = POSITIVE_INFINITY;
-
         while depth < max_depth {
             info!("searching {} ply deep", depth);
-            let (search_move, search_evaluation) = match self.alpha_beta(
-                position.clone(),
-                alpha,
-                beta,
-                depth,
-                0,
-                self.repetition_table.clone(),
-                start_time,
-                max_time,
-            ) {
-                Some(val) => val,
-                None => {
-                    info!("search cancelled (time)");
-                    break;
-                }
-            };
-            if search_move != NULL_MOVE {
-                best_move = search_move;
-                best_evaluation = search_evaluation;
-            }
+            (best_move, best_evaluation) =
+                match self.root_search(&position, depth, start_time, max_time) {
+                    Some(val) => val,
+                    None => {
+                        info!("search cancelled (time)");
+                        break;
+                    }
+                };
             let nps = self.nodes_searched / (start_time.elapsed().as_millis() as u64 + 1) * 1000;
             println!("info score cp {}", best_evaluation);
             println!(
-                "info nodes {} nps {} depth {}",
-                self.nodes_searched, nps, depth
+                "info nodes {0} nps {nps} depth {depth}",
+                self.nodes_searched
             );
             if best_evaluation == POSITIVE_INFINITY {
-                println!("info score mate {}", depth + 1);
+                println!("info score mate {depth}");
                 break;
             } else if best_evaluation == NEGATIVE_INFINITY {
-                println!("info score mate -{}", depth + 1);
+                println!("info score mate -{depth}");
                 break;
             } else {
                 println!("info score cp {}", best_evaluation);
