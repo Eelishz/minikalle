@@ -470,7 +470,6 @@ impl Engine {
         let mut best_move = NULL_MOVE;
 
         if depth_left == 0 {
-            let mut best_move = NULL_MOVE;
             let mut best_evaluation = NEGATIVE_INFINITY;
             for chess_move in moves {
                 let mut new_position = position.clone();
@@ -498,7 +497,7 @@ impl Engine {
 
             let mut new_position = position.clone();
             new_position.play_unchecked(&chess_move);
-            let evaluation = self.alpha_beta(
+            let evaluation = -self.alpha_beta(
                 new_position,
                 -beta,
                 -alpha,
@@ -508,7 +507,7 @@ impl Engine {
                 start_time,
                 max_time,
             )?;
-            let evaluation = -evaluation;
+
             if evaluation >= beta {
                 self.tt.insert(
                     zobrist,
@@ -559,14 +558,10 @@ impl Engine {
                 "info nodes {0} nps {nps} depth {depth}",
                 self.nodes_searched
             );
-            if best_evaluation == POSITIVE_INFINITY {
-                println!("info score mate {depth}");
-                break;
-            } else if best_evaluation == NEGATIVE_INFINITY {
-                println!("info score mate -{depth}");
-                break;
-            } else {
-                println!("info score cp {}", best_evaluation);
+            match best_evaluation {
+                POSITIVE_INFINITY => println!("info score mate {}", depth + 1),
+                NEGATIVE_INFINITY => println!("info score mate -{}", depth + 1),
+                _ => println!("info score cp {}", best_evaluation),
             }
             depth += 1;
         }
