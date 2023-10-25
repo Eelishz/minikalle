@@ -468,11 +468,11 @@ impl Engine {
             for chess_move in moves {
                 let mut new_position = position.clone();
                 new_position.play_unchecked(&chess_move);
-                let evaulation = evaluate(&new_position);
+                let evaluation = evaluate(&new_position);
 
-                if evaulation > best_evaluation {
+                if evaluation > best_evaluation {
                     best_move = chess_move.clone();
-                    best_evaluation = evaulation;
+                    best_evaluation = evaluation;
                 }
             }
             return Some((best_move, best_evaluation));
