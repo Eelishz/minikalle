@@ -2,8 +2,8 @@ use shakmaty::{Board, Chess, Color, Outcome, Position};
 mod squaretables;
 use squaretables::parse_tables;
 
-const POSITIVE_INFINITY: i16 = 32767;
-const NEGATIVE_INFINITY: i16 = -32767;
+const POSITIVE_INFINITY: i16 = 30000;
+const NEGATIVE_INFINITY: i16 = -30000;
 
 fn count_pieces(board: &Board) -> i16 {
     let white_material = board.material_side(Color::White);

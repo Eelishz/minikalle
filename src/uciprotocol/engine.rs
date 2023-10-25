@@ -202,8 +202,8 @@ mod tests {
     }
 }
 
-const POSITIVE_INFINITY: i16 = 32767;
-const NEGATIVE_INFINITY: i16 = -32767;
+const POSITIVE_INFINITY: i16 = 30000;
+const NEGATIVE_INFINITY: i16 = -30000;
 
 const NULL_MOVE: Move = Move::Normal {
     role: Role::Pawn,
@@ -468,8 +468,8 @@ impl Engine {
             for chess_move in moves {
                 let mut new_position = position.clone();
                 new_position.play_unchecked(&chess_move);
-                let evaluation = evaluate(&new_position);
-
+                let evaluation = -evaluate(&new_position);
+                
                 if evaluation > best_evaluation {
                     best_move = chess_move.clone();
                     best_evaluation = evaluation;
@@ -547,14 +547,14 @@ impl Engine {
                     }
                 };
             let nps = self.nodes_searched / (start_time.elapsed().as_millis() as u64 + 1) * 1000;
-            println!("info score cp {}", best_evaluation);
             println!(
                 "info nodes {0} nps {nps} depth {depth}",
                 self.nodes_searched
             );
+            println!("info score cp {}", best_evaluation);
             match best_evaluation {
-                POSITIVE_INFINITY => println!("info score mate {}", depth + 1),
-                NEGATIVE_INFINITY => println!("info score mate -{}", depth + 1),
+                POSITIVE_INFINITY => {println!("info score mate {}", depth + 1); break}
+                NEGATIVE_INFINITY => {println!("info score mate -{}", depth + 1); break}
                 _ => println!("info score cp {}", best_evaluation),
             }
             depth += 1;
