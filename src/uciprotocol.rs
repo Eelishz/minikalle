@@ -189,8 +189,6 @@ impl UciProtocol {
                         fen_buffer.push(' '); //trailing space to account for split method stripping whitespace
                         fen_buffer.push_str(symbol);
 
-                        println!("{fen_buffer}");
-
                         if self.is_fen_string(&fen_buffer[1..]) {
                             tokens.push(Token::FENStr(fen_buffer.clone()));
                             fen_buffer.clear();
@@ -208,8 +206,6 @@ impl UciProtocol {
                 }
             }
         }
-
-        println!("{:?}", tokens);
 
         if is_fen {
             eprintln!("unreconized fen string {message}");

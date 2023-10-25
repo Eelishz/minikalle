@@ -67,7 +67,7 @@ mod tests {
     //}
 }
 
-const PAWN_SQUARE_TABLE: [i16; 64] = [
+const PAWN_SQUARE_TABLE: [i32; 64] = [
     0, 0, 0, 0, 0, 0, 0, 0, // rank 8
     50, 50, 50, 50, 50, 50, 50, 50, // rank 7
     10, 10, 20, 30, 30, 20, 10, 10, // rank 6
@@ -78,7 +78,7 @@ const PAWN_SQUARE_TABLE: [i16; 64] = [
     0, 0, 0, 0, 0, 0, 0, 0, // rank 1
 ];
 
-const KNIGHT_SQUARE_TABLE: [i16; 64] = [
+const KNIGHT_SQUARE_TABLE: [i32; 64] = [
     -50, -40, -30, -30, -30, -30, -40, -50, // rank 8
     -40, -20, 0, 0, 0, 0, -20, -40, // rank 7
     -30, 0, 10, 15, 15, 10, 0, -30, // rank 6
@@ -89,7 +89,7 @@ const KNIGHT_SQUARE_TABLE: [i16; 64] = [
     -50, -40, -30, -30, -30, -30, -40, -50, // rank 1
 ];
 
-const BISHOP_SQUARE_TABLE: [i16; 64] = [
+const BISHOP_SQUARE_TABLE: [i32; 64] = [
     -20, -10, -10, -10, -10, -10, -10, -20, // rank 8
     -10, 0, 0, 0, 0, 0, 0, -10, // rank 7
     -10, 0, 5, 10, 10, 5, 0, -10, // rank 6
@@ -100,7 +100,7 @@ const BISHOP_SQUARE_TABLE: [i16; 64] = [
     -20, -10, -10, -10, -10, -10, -10, -20, // rank 1
 ];
 
-const ROOK_SQUARE_TABLE: [i16; 64] = [
+const ROOK_SQUARE_TABLE: [i32; 64] = [
     0, 0, 0, 0, 0, 0, 0, 0, // rank 8
     5, 10, 10, 10, 10, 10, 10, 5, // rank 7
     -5, 0, 0, 0, 0, 0, 0, -5, // rank 6
@@ -111,7 +111,7 @@ const ROOK_SQUARE_TABLE: [i16; 64] = [
     0, 0, 0, 5, 5, 0, 0, 0, // rank 1
 ];
 
-const QUEEN_SQUARE_TABLE: [i16; 64] = [
+const QUEEN_SQUARE_TABLE: [i32; 64] = [
     -20, -10, -10, -5, -5, -10, -10, -20, // rank 8
     -10, 0, 0, 0, 0, 0, 0, -10, // rank 7
     -10, 0, 5, 5, 5, 5, 0, -10, // rank 6
@@ -122,7 +122,7 @@ const QUEEN_SQUARE_TABLE: [i16; 64] = [
     -20, -10, -10, -5, -5, -10, -10, -20, // rank 1
 ];
 
-const KING_SQUARE_TABLE: [i16; 64] = [
+const KING_SQUARE_TABLE: [i32; 64] = [
     -30, -40, -40, -50, -50, -40, -40, -30, // rank 8
     -30, -40, -40, -50, -50, -40, -40, -30, // rank 7
     -30, -40, -40, -50, -50, -40, -40, -30, // rank 6
@@ -133,7 +133,7 @@ const KING_SQUARE_TABLE: [i16; 64] = [
     20, 30, 10, 0, 0, 10, 30, 20, // rank 1
 ];
 
-const SQUARE_TABLES: [[i16; 64]; 6] = [
+const SQUARE_TABLES: [[i32; 64]; 6] = [
     PAWN_SQUARE_TABLE,
     KNIGHT_SQUARE_TABLE,
     BISHOP_SQUARE_TABLE,
@@ -142,14 +142,14 @@ const SQUARE_TABLES: [[i16; 64]; 6] = [
     KING_SQUARE_TABLE,
 ];
 
-fn parse_table(bitboard: &Bitboard, square_table: [i16; 64]) -> i16 {
+fn parse_table(bitboard: &Bitboard, square_table: [i32; 64]) -> i32 {
     bitboard
         .into_iter()
         .map(|square| square_table[square as usize])
         .sum()
 }
 
-pub fn parse_tables(board: &Board) -> i16 {
+pub fn parse_tables(board: &Board) -> i32 {
     Color::ALL
         .iter()
         .map(|color| {
@@ -167,7 +167,7 @@ pub fn parse_tables(board: &Board) -> i16 {
                         }
                     }
                 })
-                .sum::<i16>()
+                .sum::<i32>()
         })
-        .sum::<i16>()
+        .sum::<i32>()
 }

@@ -59,7 +59,9 @@ mod tests {
         let mut engine = Engine::new();
 
         // Call your alpha-beta function
-        let (_, evaluation) = engine.root_search(&position, 3, Instant::now(), 1000).unwrap();
+        let (_, evaluation) = engine
+            .root_search(&position, 3, Instant::now(), 1000)
+            .unwrap();
 
         // Assert that the result is as expected
         assert!(evaluation >= 0);
@@ -200,8 +202,8 @@ mod tests {
     }
 }
 
-const POSITIVE_INFINITY: i16 = 30000;
-const NEGATIVE_INFINITY: i16 = -30000;
+const POSITIVE_INFINITY: i32 = 100000;
+const NEGATIVE_INFINITY: i32 = -100000;
 
 const NULL_MOVE: Move = Move::Normal {
     role: Role::Pawn,
@@ -279,12 +281,12 @@ impl Engine {
     fn quiesce(
         &mut self,
         position: Chess,
-        mut alpha: i16,
-        beta: i16,
+        mut alpha: i32,
+        beta: i32,
         depth_from_root: u8,
         start_time: Instant,
         max_time: u64,
-    ) -> Option<i16> {
+    ) -> Option<i32> {
         if (start_time.elapsed().as_millis() as u64) > max_time {
             return None;
         }
@@ -338,26 +340,17 @@ impl Engine {
         i >= 3
     }
 
-    fn calculate_extension(&self, chess_move: &Move) -> u8 {
-        if chess_move.is_capture() {
-            return 1;
-        } else if chess_move.is_promotion() {
-            return 1;
-        }
-        return 0;
-    }
-
     fn alpha_beta(
         &mut self,
         position: Chess,
-        mut alpha: i16,
-        beta: i16,
+        mut alpha: i32,
+        beta: i32,
         depth_left: u8,
         depth_from_root: u8,
         mut position_table: Vec<u64>,
         start_time: Instant,
         max_time: u64,
-    ) -> Option<i16> {
+    ) -> Option<i32> {
         if (start_time.elapsed().as_millis() as u64) > max_time {
             return None;
         }
@@ -415,15 +408,13 @@ impl Engine {
                 position_table.clear();
             }
 
-            let extension = self.calculate_extension(&chess_move);
-
             let mut new_position = position.clone();
             new_position.play_unchecked(&chess_move);
             let evaluation = -self.alpha_beta(
                 new_position,
                 -beta,
                 -alpha,
-                depth_left + extension - 1,
+                depth_left - 1,
                 depth_from_root + 1,
                 position_table.clone(),
                 start_time,
@@ -456,7 +447,7 @@ impl Engine {
         depth_left: u8,
         start_time: Instant,
         max_time: u64,
-    ) -> Option<(Move, i16)> {
+    ) -> Option<(Move, i32)> {
         self.nodes_searched += 1;
 
         let zobrist = position
@@ -472,21 +463,6 @@ impl Engine {
 
         let mut best_move = moves[0].clone();
 
-        if depth_left == 0 {
-            let mut best_evaluation = NEGATIVE_INFINITY;
-            for chess_move in moves {
-                let mut new_position = position.clone();
-                new_position.play_unchecked(&chess_move);
-                let evaluation = -evaluate(&new_position);
-
-                if evaluation > best_evaluation {
-                    best_move = chess_move.clone();
-                    best_evaluation = evaluation;
-                }
-            }
-            return Some((best_move, best_evaluation));
-        }
-
         position_table.push(zobrist);
 
         for chess_move in moves {
@@ -494,21 +470,18 @@ impl Engine {
                 position_table.clear();
             }
 
-            let extension = self.calculate_extension(&chess_move);
-
             let mut new_position = position.clone();
             new_position.play_unchecked(&chess_move);
-            let evaluation = -self
-                .alpha_beta(
-                    new_position,
-                    -beta,
-                    -alpha,
-                    depth_left + extension - 1,
-                    1,
-                    position_table.clone(),
-                    start_time,
-                    max_time,
-                )?;
+            let evaluation = -self.alpha_beta(
+                new_position,
+                -beta,
+                -alpha,
+                depth_left - 1,
+                1,
+                position_table.clone(),
+                start_time,
+                max_time,
+            )?;
 
             if evaluation >= beta {
                 self.tt.insert(
@@ -541,13 +514,13 @@ impl Engine {
         position: Chess,
         max_time: u64,
         max_depth: u8,
-    ) -> (Move, i16) {
+    ) -> (Move, i32) {
         let start_time = Instant::now();
 
         let mut best_move = position.legal_moves()[0].clone();
         let mut best_evaluation = NEGATIVE_INFINITY;
 
-        let mut depth: u8 = 0;
+        let mut depth: u8 = 1;
 
         self.nodes_searched = 0;
 
@@ -570,11 +543,11 @@ impl Engine {
             println!("info score cp {}", best_evaluation);
             match best_evaluation {
                 POSITIVE_INFINITY => {
-                    println!("info score mate {}", depth + 1);
+                    println!("info score mate {depth}");
                     break;
                 }
                 NEGATIVE_INFINITY => {
-                    println!("info score mate -{}", depth + 1);
+                    println!("info score mate -{depth}");
                     break;
                 }
                 _ => println!("info score cp {}", best_evaluation),
@@ -599,7 +572,7 @@ impl Engine {
         position: Chess,
         max_time: u64,
         max_depth: u8,
-    ) -> (Move, Uci, i16) {
+    ) -> (Move, Uci, i32) {
         let zobrist = position.zobrist_hash::<Zobrist64>(shakmaty::EnPassantMode::Legal);
         if self.book.contains_key(&zobrist.0) {
             info!("using book");
