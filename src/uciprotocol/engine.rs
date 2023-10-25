@@ -98,7 +98,7 @@ mod tests {
 
         let position: Chess = fen.into_position(shakmaty::CastlingMode::Standard).unwrap();
 
-        let (_, uci, _) = engine.find_best_move(position, 1_000);
+        let (_, uci, _) = engine.find_best_move(position, 1_000, 40);
 
         assert_eq!(uci.to_string(), "d3d8".to_string());
 
@@ -108,7 +108,7 @@ mod tests {
 
         let position: Chess = fen.into_position(shakmaty::CastlingMode::Standard).unwrap();
 
-        let (_, uci, _) = engine.find_best_move(position, 1_000);
+        let (_, uci, _) = engine.find_best_move(position, 1_000, 40);
 
         assert_eq!(uci.to_string(), "e1f1".to_string());
 
@@ -118,7 +118,7 @@ mod tests {
 
         let position: Chess = fen.into_position(shakmaty::CastlingMode::Standard).unwrap();
 
-        let (_, uci, _) = engine.find_best_move(position, 1_000);
+        let (_, uci, _) = engine.find_best_move(position, 1_000, 40);
 
         assert_eq!(uci.to_string(), "e6e1".to_string());
 
@@ -128,7 +128,7 @@ mod tests {
 
         let position: Chess = fen.into_position(shakmaty::CastlingMode::Standard).unwrap();
 
-        let (_, uci, _) = engine.find_best_move(position, 1_000);
+        let (_, uci, _) = engine.find_best_move(position, 1_000, 40);
 
         assert_eq!(uci.to_string(), "e8e1".to_string());
     }
@@ -141,7 +141,7 @@ mod tests {
 
         let mut engine = Engine::new();
 
-        let (_, uci, _) = engine.find_best_move(position, 1_000);
+        let (_, uci, _) = engine.find_best_move(position, 1_000, 40);
 
         assert_eq!(uci.to_string(), "d4e5".to_string());
 
@@ -149,7 +149,7 @@ mod tests {
 
         let position: Chess = fen.into_position(shakmaty::CastlingMode::Standard).unwrap();
 
-        let (_, uci, _) = engine.find_best_move(position, 1_000);
+        let (_, uci, _) = engine.find_best_move(position, 1_000, 40);
 
         assert_eq!(uci.to_string(), "e5d4".to_string());
     }
@@ -404,7 +404,6 @@ impl Engine {
         let mut best_move = NULL_MOVE;
 
         for chess_move in moves {
-
             if chess_move.is_capture() {
                 position_table.clear();
             }
@@ -437,13 +436,8 @@ impl Engine {
             }
         }
 
-        self.tt.insert(
-            zobrist,
-            best_move,
-            alpha,
-            depth_left,
-            EvaluationType::Alpha,
-        );
+        self.tt
+            .insert(zobrist, best_move, alpha, depth_left, EvaluationType::Alpha);
         return Some(alpha);
     }
 
@@ -578,7 +572,12 @@ impl Engine {
         self.repetition_table.clear();
     }
 
-    pub fn find_best_move(&mut self, position: Chess, max_time: u64) -> (Move, Uci, i16) {
+    pub fn find_best_move(
+        &mut self,
+        position: Chess,
+        max_time: u64,
+        max_depth: u8,
+    ) -> (Move, Uci, i16) {
         let zobrist = position.zobrist_hash::<Zobrist64>(shakmaty::EnPassantMode::Legal);
         if self.book.contains_key(&zobrist.0) {
             info!("using book");
@@ -588,7 +587,7 @@ impl Engine {
             let chess_move = uci.to_move(&position).unwrap();
             return (chess_move, uci, 0);
         }
-        let (best_move, evaluation) = self.iterative_deepening(position, max_time, 40);
+        let (best_move, evaluation) = self.iterative_deepening(position, max_time, max_depth);
         (
             best_move.clone(),
             best_move.clone().to_uci(CastlingMode::Standard),
