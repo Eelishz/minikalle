@@ -1,7 +1,7 @@
 // UCI Implementation from: https://wbec-ridderkerk.nl/html/UCIProtocol.html
 // Engine also has some UCI output that is not handled through this module
 
-use log::{error, info, warn};
+use log::{info};
 use regex::Regex;
 use shakmaty::{fen::Fen, uci::Uci, Chess, Color, Move, Position};
 use std::io::stdin;
@@ -92,7 +92,7 @@ impl UciProtocol {
         let mut winc: u64 = 1000;
         let mut binc: u64 = 1000;
 
-        let movetime: u64 = 0;
+        let mut movetime: u64 = 0;
         let mut infinite = false;
 
         let mut depth: u64 = 40;
@@ -106,6 +106,7 @@ impl UciProtocol {
                     Token::WInc => winc = *n,
                     Token::BInc => binc = *n,
                     Token::Depth => depth = *n,
+                    Token::MoveTime => movetime = *n,
                     _ => (),
                 },
                 Token::Infinite => infinite = true,
@@ -188,8 +189,9 @@ impl UciProtocol {
                         fen_buffer.push(' '); //trailing space to account for split method stripping whitespace
                         fen_buffer.push_str(symbol);
 
+                        println!("{fen_buffer}");
+
                         if self.is_fen_string(&fen_buffer[1..]) {
-                            println!("match!");
                             tokens.push(Token::FENStr(fen_buffer.clone()));
                             fen_buffer.clear();
                             is_fen = false;
@@ -207,16 +209,17 @@ impl UciProtocol {
             }
         }
 
+        println!("{:?}", tokens);
+
         if is_fen {
-            eprintln!("unreconized fen strigng {message}");
+            eprintln!("unreconized fen string {message}");
         }
 
         self.excecute_fen(&tokens);
     }
 
     fn is_fen_string(&mut self, symbol: &str) -> bool {
-        // https://gist.github.com/Dani4kor/e1e8b439115878f8c6dcf127a4ed5d3e
-        let re_fen = Regex::new(r"\s*^(((?:[rnbqkpRNBQKP1-8]+\/){7})[rnbqkpRNBQKP1-8]+)\s([b|w])\s([K|Q|k|q]{1,4})\s(-|[a-h][1-8])\s(\d+\s\d+)$").unwrap();
+        let re_fen = Regex::new(r"^((([prnbqkPRNBQK1-8]+)\/){7}([prnbqkPRNBQK1-8]+)\s[wb]\s(K?Q?k?q?|-)\s([a-h][1-8]|\-)\s\d+\s\d+)$").unwrap();
         re_fen.is_match(symbol)
     }
 

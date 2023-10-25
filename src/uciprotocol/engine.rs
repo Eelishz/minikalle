@@ -59,9 +59,7 @@ mod tests {
         let mut engine = Engine::new();
 
         // Call your alpha-beta function
-        let (_, evaluation) = engine
-            .root_search(&position, 3, Instant::now(), 1000)
-            .unwrap();
+        let (_, evaluation) = engine.root_search(&position, 3, Instant::now(), 1000).unwrap();
 
         // Assert that the result is as expected
         assert!(evaluation >= 0);
@@ -340,6 +338,15 @@ impl Engine {
         i >= 3
     }
 
+    fn calculate_extension(&self, chess_move: &Move) -> u8 {
+        if chess_move.is_capture() {
+            return 1;
+        } else if chess_move.is_promotion() {
+            return 1;
+        }
+        return 0;
+    }
+
     fn alpha_beta(
         &mut self,
         position: Chess,
@@ -408,13 +415,15 @@ impl Engine {
                 position_table.clear();
             }
 
+            let extension = self.calculate_extension(&chess_move);
+
             let mut new_position = position.clone();
             new_position.play_unchecked(&chess_move);
             let evaluation = -self.alpha_beta(
                 new_position,
                 -beta,
                 -alpha,
-                depth_left - 1,
+                depth_left + extension - 1,
                 depth_from_root + 1,
                 position_table.clone(),
                 start_time,
@@ -448,11 +457,11 @@ impl Engine {
         start_time: Instant,
         max_time: u64,
     ) -> Option<(Move, i16)> {
-        if (start_time.elapsed().as_millis() as u64) > max_time {
-            return None;
-        }
-
         self.nodes_searched += 1;
+
+        let zobrist = position
+            .zobrist_hash::<Zobrist64>(shakmaty::EnPassantMode::Legal)
+            .0;
 
         let mut position_table = self.repetition_table.clone();
 
@@ -461,7 +470,7 @@ impl Engine {
 
         let moves = self.order_moves(&position);
 
-        let mut best_move = NULL_MOVE;
+        let mut best_move = moves[0].clone();
 
         if depth_left == 0 {
             let mut best_evaluation = NEGATIVE_INFINITY;
@@ -469,7 +478,7 @@ impl Engine {
                 let mut new_position = position.clone();
                 new_position.play_unchecked(&chess_move);
                 let evaluation = -evaluate(&new_position);
-                
+
                 if evaluation > best_evaluation {
                     best_move = chess_move.clone();
                     best_evaluation = evaluation;
@@ -478,10 +487,6 @@ impl Engine {
             return Some((best_move, best_evaluation));
         }
 
-        let zobrist = position
-            .zobrist_hash::<Zobrist64>(shakmaty::EnPassantMode::Legal)
-            .0;
-
         position_table.push(zobrist);
 
         for chess_move in moves {
@@ -489,18 +494,21 @@ impl Engine {
                 position_table.clear();
             }
 
+            let extension = self.calculate_extension(&chess_move);
+
             let mut new_position = position.clone();
             new_position.play_unchecked(&chess_move);
-            let evaluation = -self.alpha_beta(
-                new_position,
-                -beta,
-                -alpha,
-                depth_left - 1,
-                1,
-                position_table.clone(),
-                start_time,
-                max_time,
-            )?;
+            let evaluation = -self
+                .alpha_beta(
+                    new_position,
+                    -beta,
+                    -alpha,
+                    depth_left + extension - 1,
+                    1,
+                    position_table.clone(),
+                    start_time,
+                    max_time,
+                )?;
 
             if evaluation >= beta {
                 self.tt.insert(
@@ -518,6 +526,13 @@ impl Engine {
             }
         }
 
+        self.tt.insert(
+            zobrist,
+            best_move.clone(),
+            alpha,
+            depth_left,
+            EvaluationType::Alpha,
+        );
         return Some((best_move, alpha));
     }
 
@@ -538,14 +553,15 @@ impl Engine {
 
         while depth < max_depth {
             info!("searching {} ply deep", depth);
-            (best_move, best_evaluation) =
-                match self.root_search(&position, depth, start_time, max_time) {
-                    Some(val) => val,
-                    None => {
-                        info!("search cancelled (time)");
-                        break;
-                    }
-                };
+            let search = self.root_search(&position, depth, start_time, max_time);
+
+            if search.is_none() {
+                break;
+            }
+
+            best_move = search.clone().unwrap().0;
+            best_evaluation = search.unwrap().1;
+
             let nps = self.nodes_searched / (start_time.elapsed().as_millis() as u64 + 1) * 1000;
             println!(
                 "info nodes {0} nps {nps} depth {depth}",
@@ -553,8 +569,14 @@ impl Engine {
             );
             println!("info score cp {}", best_evaluation);
             match best_evaluation {
-                POSITIVE_INFINITY => {println!("info score mate {}", depth + 1); break}
-                NEGATIVE_INFINITY => {println!("info score mate -{}", depth + 1); break}
+                POSITIVE_INFINITY => {
+                    println!("info score mate {}", depth + 1);
+                    break;
+                }
+                NEGATIVE_INFINITY => {
+                    println!("info score mate -{}", depth + 1);
+                    break;
+                }
                 _ => println!("info score cp {}", best_evaluation),
             }
             depth += 1;
