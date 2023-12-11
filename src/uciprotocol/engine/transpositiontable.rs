@@ -20,7 +20,7 @@ pub enum EvaluationType {
 pub struct Transposition {
     pub key: u64,
     pub best_move: Move,
-    pub evaluation: i32,
+    pub evaluation: i16,
     pub depth_left: u8,
     pub evaluation_type: EvaluationType,
 }
@@ -62,7 +62,7 @@ impl TranspositionTable {
         &mut self,
         key: u64,
         best_move: Move,
-        evaluation: i32,
+        evaluation: i16,
         depth_left: u8,
         evaluation_type: EvaluationType,
     ) {
@@ -87,7 +87,7 @@ impl TranspositionTable {
         }
     }
 
-    pub fn probe_table(&self, key: &u64, depth_left: u8, alpha: i32, beta: i32) -> Option<(Move, i32)> {
+    pub fn probe_table(&self, key: &u64, depth_left: u8, alpha: i16, beta: i16) -> Option<(Move, i16)> {
         let transposition = self.get(key)?;
         let best_move = transposition.best_move;
         let evaluation = transposition.evaluation;

@@ -1,7 +1,6 @@
 // UCI Implementation from: https://wbec-ridderkerk.nl/html/UCIProtocol.html
 // Engine also has some UCI output that is not handled through this module
 
-use log::{info};
 use regex::Regex;
 use shakmaty::{fen::Fen, uci::Uci, Chess, Color, Move, Position};
 use std::io::stdin;
@@ -53,7 +52,6 @@ impl UciProtocol {
     }
 
     fn new_game(&mut self) {
-        self.chess_engine.clear_repetition_table();
     }
 
     fn excecute_fen(&mut self, tokens: &Vec<Token>) {
@@ -238,8 +236,6 @@ impl UciProtocol {
                 .read_line(&mut message)
                 .expect("Did not enter a correct string");
             message = message.trim().to_string();
-
-            info!("UCI message: {}", message);
 
             self.parse_message(&message);
         }
