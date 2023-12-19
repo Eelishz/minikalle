@@ -51,6 +51,14 @@ impl UciProtocol {
         }
     }
 
+    pub fn demo(&mut self) {
+        for _ in 0..50 {
+            let (m, uci, _) = self.chess_engine.find_best_move(self.position.clone(), 1000, 20);
+            self.position = self.position.clone().play(&m).unwrap();
+            println!("bestmove {}", uci);
+        }
+    }
+
     fn new_game(&mut self) {
     }
 
@@ -105,7 +113,7 @@ impl UciProtocol {
                     Token::BInc => binc = *n,
                     Token::Depth => depth = *n,
                     Token::MoveTime => movetime = *n,
-                    _ => (),
+                    _ => movetime = 99999999,
                 },
                 Token::Infinite => infinite = true,
                 _ => prev_token = &token,

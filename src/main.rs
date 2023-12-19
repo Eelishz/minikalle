@@ -1,8 +1,15 @@
 #![feature(test)]
 
+use std::env::args;
+
 mod uciprotocol;
 
 fn main() {
+    let args = args();
     let mut uci_protocol = uciprotocol::UciProtocol::new();
-    uci_protocol.start()
+    if args.last().unwrap() == "demo" {
+        uci_protocol.demo();
+    } else {
+        uci_protocol.start();
+    }
 }
