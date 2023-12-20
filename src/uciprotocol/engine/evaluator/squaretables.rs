@@ -142,6 +142,7 @@ const SQUARE_TABLES: [[i16; 64]; 6] = [
     KING_SQUARE_TABLE,
 ];
 
+#[inline]
 fn parse_table(bitboard: &Bitboard, square_table: [i16; 64]) -> i16 {
     bitboard
         .into_iter()

@@ -3,6 +3,7 @@ mod squaretables;
 use squaretables::parse_tables;
 use super::{POSITIVE_INFINITY, NEGATIVE_INFINITY};
 
+#[inline]
 fn count_pieces(board: &Board) -> i16 {
     let white_material = board.material_side(Color::White);
     let black_material = board.material_side(Color::Black);

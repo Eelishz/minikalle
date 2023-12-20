@@ -1,4 +1,4 @@
-#![feature(test)]
+#![feature(test, slice_swap_unchecked)]
 
 use std::env::args;
 

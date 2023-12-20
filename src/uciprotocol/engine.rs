@@ -1,7 +1,7 @@
 use rand::seq::SliceRandom;
 use shakmaty::zobrist::{Zobrist64, ZobristHash};
 use shakmaty::{uci::Uci, CastlingMode, Chess, Move, Position};
-use shakmaty::{Role, Square};
+use shakmaty::{MoveList, Role, Square};
 use std::str::FromStr;
 use std::time::{Duration, SystemTime};
 use std::{collections::HashMap, time::Instant};
@@ -123,17 +123,27 @@ impl Default for Engine {
     }
 }
 
-fn unmake(position: &mut Chess, m: &Move) {
-    let opposite_move = Move::Normal { role: m.role(), from: m.to(), capture: None, to: m.from().unwrap(), promotion: None };
-    position.play_unchecked(&opposite_move);
-    todo!();
+#[inline]
+fn sort_moves(scores: &mut [i16], moves: &mut MoveList) {
+    for i in 1..scores.len() {
+        let mut j = i;
+        while j > 0 && scores[j - 1] > scores[j] {
+            unsafe {
+                scores.swap_unchecked(j, j - 1);
+                moves.swap_unchecked(j, j - 1);
+            }
+            j -= 1;
+        }
+    }
 }
 
-
-fn order_moves(position: &Chess, tt: &TranspositionTable) -> Vec<Move> {
+fn order_moves(position: &Chess, tt: &TranspositionTable, capture_moves: bool) -> MoveList {
     // MVV-LVA (most valuable capture, least valuable attacker)
     // Hash move
-    let legal_moves = position.legal_moves().to_vec();
+    let mut legal_moves = match capture_moves {
+        false => position.legal_moves(),
+        true => position.capture_moves(),
+    };
 
     let hash_move = match tt.get(
         &position
@@ -144,7 +154,7 @@ fn order_moves(position: &Chess, tt: &TranspositionTable) -> Vec<Move> {
         None => NULL_MOVE,
     };
 
-    let mut scores = vec![0; legal_moves.len()];
+    let mut scores = [0; 256]; // 256 should be large enough
 
     for (i, chess_move) in legal_moves.iter().enumerate() {
         if chess_move == &hash_move {
@@ -171,13 +181,21 @@ fn order_moves(position: &Chess, tt: &TranspositionTable) -> Vec<Move> {
         }
     }
 
-    let mut sorted_moves: Vec<(&Move, i16)> = legal_moves.iter().zip(scores).collect();
-    sorted_moves.sort_by(|a, b| a.1.cmp(&b.1));
+    let score_slice = &mut scores[0..legal_moves.len()];
+    sort_moves(score_slice, &mut legal_moves);
 
-    return sorted_moves.iter().map(|x| x.0.clone()).collect();
+    return legal_moves;
 }
 
-fn quiesce(position: &mut Chess, mut alpha: i16, beta: i16, depth_from_root: u8, max_time: u64, start_time: SystemTime) -> Option<i16> {
+fn quiesce(
+    position: &Chess,
+    mut alpha: i16,
+    beta: i16,
+    depth_from_root: u8,
+    tt: &TranspositionTable,
+    max_time: u64,
+    start_time: SystemTime,
+) -> Option<i16> {
     if start_time.elapsed().unwrap() >= Duration::from_millis(max_time) {
         return None;
     }
@@ -191,10 +209,20 @@ fn quiesce(position: &mut Chess, mut alpha: i16, beta: i16, depth_from_root: u8,
         alpha = stand_pat;
     }
 
-    for chess_move in position.capture_moves() {
+    let moves = order_moves(position, tt, true);
+
+    for chess_move in moves {
         let mut new_position = position.clone();
         new_position.play_unchecked(&chess_move);
-        let evaluation = -quiesce(&mut new_position, -beta, -alpha, depth_from_root + 1, max_time, start_time)?;
+        let evaluation = -quiesce(
+            &new_position,
+            -beta,
+            -alpha,
+            depth_from_root + 1,
+            tt,
+            max_time,
+            start_time,
+        )?;
 
         if evaluation >= beta {
             return Some(beta);
@@ -208,7 +236,7 @@ fn quiesce(position: &mut Chess, mut alpha: i16, beta: i16, depth_from_root: u8,
 }
 
 fn alpha_beta(
-    position: &mut Chess,
+    position: &Chess,
     mut alpha: i16,
     beta: i16,
     depth_left: u8,
@@ -233,7 +261,15 @@ fn alpha_beta(
     }
 
     if depth_left == 0 {
-        let evaluation = quiesce(position, alpha, beta, depth_from_root + 1, max_time, start_time)?;
+        let evaluation = quiesce(
+            position,
+            alpha,
+            beta,
+            depth_from_root + 1,
+            tt,
+            max_time,
+            start_time,
+        )?;
 
         tt.insert(
             zobrist,
@@ -245,7 +281,7 @@ fn alpha_beta(
         return Some(evaluation);
     }
 
-    let moves = order_moves(&position, &tt);
+    let moves = order_moves(&position, &tt, false);
 
     if moves.len() == 0 {
         return Some(0);
@@ -257,7 +293,7 @@ fn alpha_beta(
         let mut new_position = position.clone();
         new_position.play_unchecked(&chess_move);
         let evaluation = -alpha_beta(
-            &mut new_position,
+            &new_position,
             -beta,
             -alpha,
             depth_left - 1,
@@ -287,7 +323,7 @@ fn alpha_beta(
 }
 
 pub fn root_search(
-    position: &mut Chess,
+    position: &Chess,
     depth_left: u8,
     tt: &mut TranspositionTable,
     max_time: u64,
@@ -300,7 +336,7 @@ pub fn root_search(
     let mut alpha = NEGATIVE_INFINITY;
     let beta = POSITIVE_INFINITY;
 
-    let moves = order_moves(&position, tt);
+    let moves = order_moves(&position, tt, false);
 
     let mut best_move = moves[0].clone();
 
@@ -308,7 +344,7 @@ pub fn root_search(
         let mut new_position = position.clone();
         new_position.play_unchecked(&chess_move);
         let evaluation = -alpha_beta(
-            &mut new_position,
+            &new_position,
             -beta,
             -alpha,
             depth_left - 1,
@@ -368,7 +404,7 @@ mod tests {
 
         // Call your alpha-beta function
         let evaluation = alpha_beta(
-            &mut position,
+            &position,
             NEGATIVE_INFINITY,
             POSITIVE_INFINITY,
             3,
@@ -466,9 +502,13 @@ mod tests {
         let position = Chess::new();
         let tt = TranspositionTable::new(64);
 
-        let result = order_moves(&position, &tt);
+        let result = order_moves(&position, &tt, false);
 
         assert_eq!(result.len(), position.legal_moves().len());
+
+        let result = order_moves(&position, &tt, true);
+
+        assert_eq!(result.len(), position.capture_moves().len());
     }
 
     #[bench]
@@ -481,7 +521,7 @@ mod tests {
 
         b.iter(|| {
             alpha_beta(
-                &mut position.clone(),
+                &position.clone(),
                 alpha,
                 beta,
                 3,
