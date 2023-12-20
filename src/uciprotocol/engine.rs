@@ -3,7 +3,7 @@ use shakmaty::zobrist::{Zobrist64, ZobristHash};
 use shakmaty::{uci::Uci, CastlingMode, Chess, Move, Position};
 use shakmaty::{Role, Square};
 use std::str::FromStr;
-use std::thread;
+use std::time::{Duration, SystemTime};
 use std::{collections::HashMap, time::Instant};
 mod evaluator;
 mod openings;
@@ -41,7 +41,7 @@ impl Engine {
 
     fn iterative_deepening(
         &mut self,
-        position: Chess,
+        position: &mut Chess,
         max_time: u64,
         max_depth: u8,
     ) -> (Move, i16) {
@@ -55,10 +55,15 @@ impl Engine {
         self.nodes_searched = 0;
 
         while depth < max_depth {
-            let search = root_search(&position, depth, &mut self.tt);
+            let search = root_search(position, depth, &mut self.tt, max_time);
 
-            best_move = search.clone().0;
-            best_evaluation = search.1;
+            match search {
+                Some(s) => {
+                    best_move = s.clone().0;
+                    best_evaluation = s.1;
+                }
+                None => break,
+            }
 
             let nps = self.nodes_searched / (start_time.elapsed().as_millis() as u64 + 1) * 1000;
             println!(
@@ -85,12 +90,12 @@ impl Engine {
             "info nodes {} nps {} depth {}",
             self.nodes_searched, nps, depth
         );
-        return (best_move, best_evaluation)
+        return (best_move, best_evaluation);
     }
 
     pub fn find_best_move(
         &mut self,
-        position: Chess,
+        position: &Chess,
         max_time: u64,
         max_depth: u8,
     ) -> (Move, Uci, i16) {
@@ -99,10 +104,11 @@ impl Engine {
             let moves = self.book.get(&zobrist.0).unwrap();
             let move_string = moves.choose(&mut rand::thread_rng()).unwrap();
             let uci = Uci::from_str(move_string).unwrap();
-            let chess_move = uci.to_move(&position).unwrap();
+            let chess_move = uci.to_move(position).unwrap();
             return (chess_move, uci, 0);
         }
-        let (best_move, evaluation) = self.iterative_deepening(position, max_time, max_depth);
+        let mut position = position.clone();
+        let (best_move, evaluation) = self.iterative_deepening(&mut position, max_time, max_depth);
         (
             best_move.clone(),
             best_move.clone().to_uci(CastlingMode::Standard),
@@ -116,6 +122,13 @@ impl Default for Engine {
         Engine::new()
     }
 }
+
+fn unmake(position: &mut Chess, m: &Move) {
+    let opposite_move = Move::Normal { role: m.role(), from: m.to(), capture: None, to: m.from().unwrap(), promotion: None };
+    position.play_unchecked(&opposite_move);
+    todo!();
+}
+
 
 fn order_moves(position: &Chess, tt: &TranspositionTable) -> Vec<Move> {
     // MVV-LVA (most valuable capture, least valuable attacker)
@@ -164,16 +177,15 @@ fn order_moves(position: &Chess, tt: &TranspositionTable) -> Vec<Move> {
     return sorted_moves.iter().map(|x| x.0.clone()).collect();
 }
 
-fn quiesce(
-    position: Chess,
-    mut alpha: i16,
-    beta: i16,
-    depth_from_root: u8,
-) -> i16 {
+fn quiesce(position: &mut Chess, mut alpha: i16, beta: i16, depth_from_root: u8, max_time: u64, start_time: SystemTime) -> Option<i16> {
+    if start_time.elapsed().unwrap() >= Duration::from_millis(max_time) {
+        return None;
+    }
+
     let stand_pat = evaluate(&position);
 
     if stand_pat >= beta {
-        return beta;
+        return Some(beta);
     }
     if alpha < stand_pat {
         alpha = stand_pat;
@@ -182,32 +194,32 @@ fn quiesce(
     for chess_move in position.capture_moves() {
         let mut new_position = position.clone();
         new_position.play_unchecked(&chess_move);
-        let evaluation = -quiesce(
-            new_position,
-            -beta,
-            -alpha,
-            depth_from_root + 1,
-        );
+        let evaluation = -quiesce(&mut new_position, -beta, -alpha, depth_from_root + 1, max_time, start_time)?;
 
         if evaluation >= beta {
-            return beta;
+            return Some(beta);
         }
         if evaluation > alpha {
             alpha = evaluation;
         }
     }
 
-    return alpha
+    return Some(alpha);
 }
 
 fn alpha_beta(
-    position: Chess,
+    position: &mut Chess,
     mut alpha: i16,
     beta: i16,
     depth_left: u8,
     depth_from_root: u8,
     tt: &mut TranspositionTable,
-) -> i16 {
+    max_time: u64,
+    start_time: SystemTime,
+) -> Option<i16> {
+    if start_time.elapsed().unwrap() >= Duration::from_millis(max_time) {
+        return None;
+    }
     let zobrist = position
         .zobrist_hash::<Zobrist64>(shakmaty::EnPassantMode::Legal)
         .0;
@@ -217,16 +229,11 @@ fn alpha_beta(
         let mut new_position = position.clone();
         let chess_move = table_lookup.clone().unwrap().0;
         new_position.play_unchecked(&chess_move);
-        return table_lookup.unwrap().1;
+        return Some(table_lookup.unwrap().1);
     }
 
     if depth_left == 0 {
-        let evaluation = quiesce(
-            position,
-            alpha,
-            beta,
-            depth_from_root + 1,
-        );
+        let evaluation = quiesce(position, alpha, beta, depth_from_root + 1, max_time, start_time)?;
 
         tt.insert(
             zobrist,
@@ -235,13 +242,13 @@ fn alpha_beta(
             depth_left,
             EvaluationType::Exact,
         );
-        return evaluation;
+        return Some(evaluation);
     }
 
     let moves = order_moves(&position, &tt);
 
     if moves.len() == 0 {
-        return 0;
+        return Some(0);
     }
 
     let mut best_move = NULL_MOVE;
@@ -250,13 +257,15 @@ fn alpha_beta(
         let mut new_position = position.clone();
         new_position.play_unchecked(&chess_move);
         let evaluation = -alpha_beta(
-            new_position,
+            &mut new_position,
             -beta,
             -alpha,
             depth_left - 1,
             depth_from_root + 1,
             tt,
-        );
+            max_time,
+            start_time,
+        )?;
         if evaluation >= beta {
             tt.insert(
                 zobrist,
@@ -265,7 +274,7 @@ fn alpha_beta(
                 depth_left,
                 EvaluationType::Beta,
             );
-            return beta;
+            return Some(beta);
         }
         if evaluation > alpha {
             alpha = evaluation;
@@ -273,16 +282,17 @@ fn alpha_beta(
         }
     }
 
-    tt
-        .insert(zobrist, best_move, alpha, depth_left, EvaluationType::Alpha);
-    return alpha;
+    tt.insert(zobrist, best_move, alpha, depth_left, EvaluationType::Alpha);
+    return Some(alpha);
 }
 
 pub fn root_search(
-    position: &Chess,
+    position: &mut Chess,
     depth_left: u8,
     tt: &mut TranspositionTable,
-) -> (Move, i16) {
+    max_time: u64,
+) -> Option<(Move, i16)> {
+    let start_time = SystemTime::now();
     let zobrist = position
         .zobrist_hash::<Zobrist64>(shakmaty::EnPassantMode::Legal)
         .0;
@@ -298,13 +308,15 @@ pub fn root_search(
         let mut new_position = position.clone();
         new_position.play_unchecked(&chess_move);
         let evaluation = -alpha_beta(
-            new_position,
+            &mut new_position,
             -beta,
             -alpha,
             depth_left - 1,
             1,
             tt,
-        );
+            max_time,
+            start_time,
+        )?;
 
         if evaluation >= beta {
             tt.insert(
@@ -314,7 +326,7 @@ pub fn root_search(
                 depth_left,
                 EvaluationType::Beta,
             );
-            return (chess_move, beta);
+            return Some((chess_move, beta));
         }
         if evaluation > alpha {
             alpha = evaluation;
@@ -329,7 +341,7 @@ pub fn root_search(
         depth_left,
         EvaluationType::Alpha,
     );
-    return (best_move, alpha);
+    return Some((best_move, alpha));
 }
 
 extern crate test;
@@ -351,18 +363,21 @@ mod tests {
     #[test]
     fn test_alpha_beta() {
         // Create a test position
-        let position = Chess::new(); // You may want to set up a specific test position here
+        let mut position = Chess::new(); // You may want to set up a specific test position here
         let mut tt = TranspositionTable::new(64);
 
         // Call your alpha-beta function
         let evaluation = alpha_beta(
-                position,
-                NEGATIVE_INFINITY,
-                POSITIVE_INFINITY,
-                3,
-                0,
-                &mut tt,
-            );
+            &mut position,
+            NEGATIVE_INFINITY,
+            POSITIVE_INFINITY,
+            3,
+            0,
+            &mut tt,
+            1000,
+            SystemTime::now(),
+        )
+        .unwrap();
 
         // Assert that the result is as expected
         assert!(evaluation >= 0);
@@ -371,12 +386,11 @@ mod tests {
     #[test]
     fn test_root_search() {
         // Create a test position
-        let position = Chess::new(); // You may want to set up a specific test position here
-        let mut engine = Engine::new();
+        let mut position = Chess::new(); // You may want to set up a specific test position here
         let mut tt = TranspositionTable::new(64);
 
         // Call your alpha-beta function
-        let (_, evaluation) = root_search(&position, 3, &mut tt);
+        let (_, evaluation) = root_search(&mut position, 3, &mut tt, 1000).unwrap();
 
         // Assert that the result is as expected
         assert!(evaluation >= 0);
@@ -389,9 +403,9 @@ mod tests {
 
         let fen: Fen = "6k1/2R5/8/8/8/3R4/2K5/8 w - - 0 1".parse().unwrap();
 
-        let position: Chess = fen.into_position(shakmaty::CastlingMode::Standard).unwrap();
+        let mut position: Chess = fen.into_position(shakmaty::CastlingMode::Standard).unwrap();
 
-        let (_, uci, _) = engine.find_best_move(position, 1_000, 3);
+        let (_, uci, _) = engine.find_best_move(&mut position, 1_000, 3);
 
         assert_eq!(uci.to_string(), "d3d8".to_string());
 
@@ -399,9 +413,9 @@ mod tests {
             .parse()
             .unwrap();
 
-        let position: Chess = fen.into_position(shakmaty::CastlingMode::Standard).unwrap();
+        let mut position: Chess = fen.into_position(shakmaty::CastlingMode::Standard).unwrap();
 
-        let (_, uci, _) = engine.find_best_move(position, 1_000, 3);
+        let (_, uci, _) = engine.find_best_move(&mut position, 1_000, 3);
 
         assert_eq!(uci.to_string(), "e1f1".to_string());
 
@@ -409,9 +423,9 @@ mod tests {
             .parse()
             .unwrap();
 
-        let position: Chess = fen.into_position(shakmaty::CastlingMode::Standard).unwrap();
+        let mut position: Chess = fen.into_position(shakmaty::CastlingMode::Standard).unwrap();
 
-        let (_, uci, _) = engine.find_best_move(position, 1_000, 3);
+        let (_, uci, _) = engine.find_best_move(&mut position, 1_000, 3);
 
         assert_eq!(uci.to_string(), "e6e1".to_string());
 
@@ -419,9 +433,9 @@ mod tests {
             .parse()
             .unwrap();
 
-        let position: Chess = fen.into_position(shakmaty::CastlingMode::Standard).unwrap();
+        let mut position: Chess = fen.into_position(shakmaty::CastlingMode::Standard).unwrap();
 
-        let (_, uci, _) = engine.find_best_move(position, 1_000, 3);
+        let (_, uci, _) = engine.find_best_move(&mut position, 1_000, 3);
 
         assert_eq!(uci.to_string(), "e8e1".to_string());
     }
@@ -430,19 +444,19 @@ mod tests {
     fn test_captures() {
         let fen: Fen = "7k/8/8/4p3/3Q4/8/8/K7 w - - 0 1".parse().unwrap();
 
-        let position: Chess = fen.into_position(shakmaty::CastlingMode::Standard).unwrap();
+        let mut position: Chess = fen.into_position(shakmaty::CastlingMode::Standard).unwrap();
 
         let mut engine = Engine::new();
 
-        let (_, uci, _) = engine.find_best_move(position, 1_000, 40);
+        let (_, uci, _) = engine.find_best_move(&mut position, 1_000, 40);
 
         assert_eq!(uci.to_string(), "d4e5".to_string());
 
         let fen: Fen = "7k/8/8/4q3/3Q4/8/8/K7 b - - 0 1".parse().unwrap();
 
-        let position: Chess = fen.into_position(shakmaty::CastlingMode::Standard).unwrap();
+        let mut position: Chess = fen.into_position(shakmaty::CastlingMode::Standard).unwrap();
 
-        let (_, uci, _) = engine.find_best_move(position, 1_000, 40);
+        let (_, uci, _) = engine.find_best_move(&mut position, 1_000, 40);
 
         assert_eq!(uci.to_string(), "e5d4".to_string());
     }
@@ -467,12 +481,14 @@ mod tests {
 
         b.iter(|| {
             alpha_beta(
-                position.clone(),
+                &mut position.clone(),
                 alpha,
                 beta,
                 3,
                 0,
                 &mut tt,
+                1000,
+                SystemTime::now(),
             )
         })
     }

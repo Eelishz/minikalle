@@ -53,7 +53,7 @@ impl UciProtocol {
 
     pub fn demo(&mut self) {
         for _ in 0..50 {
-            let (m, uci, _) = self.chess_engine.find_best_move(self.position.clone(), 1000, 20);
+            let (m, uci, _) = self.chess_engine.find_best_move(&self.position.clone(), 1000, 20);
             self.position = self.position.clone().play(&m).unwrap();
             println!("bestmove {}", uci);
         }
@@ -134,15 +134,15 @@ impl UciProtocol {
         if infinite {
             (chess_move, uci, _) =
                 self.chess_engine
-                    .find_best_move(self.position.clone(), 999999999999, max_depth);
+                    .find_best_move(&self.position.clone(), 999999999999, max_depth);
         } else if movetime != 0 {
             (chess_move, uci, _) =
                 self.chess_engine
-                    .find_best_move(self.position.clone(), movetime, max_depth);
+                    .find_best_move(&self.position.clone(), movetime, max_depth);
         } else {
             (chess_move, uci, _) =
                 self.chess_engine
-                    .find_best_move(self.position.clone(), max_time, max_depth);
+                    .find_best_move(&self.position.clone(), max_time, max_depth);
         }
 
         self.position = self.position.clone().play(&chess_move).unwrap();
