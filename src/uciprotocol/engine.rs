@@ -2,9 +2,9 @@ use rand::seq::SliceRandom;
 use shakmaty::zobrist::{Zobrist64, ZobristHash};
 use shakmaty::{uci::Uci, CastlingMode, Chess, Move, Position};
 use shakmaty::{MoveList, Role, Square};
-use std::str::FromStr;
 use std::time::{Duration, SystemTime};
-use std::{collections::HashMap, time::Instant};
+use std::collections::HashMap;
+use std::str::FromStr;
 mod evaluator;
 mod openings;
 mod transpositiontable;
@@ -26,7 +26,6 @@ const NULL_MOVE: Move = Move::Normal {
 pub struct Engine {
     tt: TranspositionTable,
     book: HashMap<u64, Vec<String>>,
-    nodes_searched: u64,
 }
 
 impl Engine {
@@ -35,7 +34,6 @@ impl Engine {
         Engine {
             tt: TranspositionTable::new(64),
             book,
-            nodes_searched: 0,
         }
     }
 
@@ -45,14 +43,13 @@ impl Engine {
         max_time: u64,
         max_depth: u8,
     ) -> (Move, i16) {
-        let start_time = Instant::now();
+        let start_time = SystemTime::now();
 
         let mut best_move = position.legal_moves()[0].clone();
         let mut best_evaluation = NEGATIVE_INFINITY;
+        let mut nodes_searched = 0;
 
         let mut depth: u8 = 1;
-
-        self.nodes_searched = 0;
 
         while depth < max_depth {
             let search = root_search(position, depth, &mut self.tt, max_time);
@@ -61,14 +58,15 @@ impl Engine {
                 Some(s) => {
                     best_move = s.clone().0;
                     best_evaluation = s.1;
+                    nodes_searched += s.2;
                 }
                 None => break,
             }
 
-            let nps = self.nodes_searched / (start_time.elapsed().as_millis() as u64 + 1) * 1000;
+            let nps = nodes_searched / (start_time.elapsed().unwrap().as_millis() + 1) * 1000;
             println!(
                 "info nodes {0} nps {nps} depth {depth}",
-                self.nodes_searched
+                nodes_searched
             );
             println!("info score cp {}", best_evaluation);
             match best_evaluation {
@@ -85,10 +83,10 @@ impl Engine {
             depth += 1;
         }
 
-        let nps = self.nodes_searched / (start_time.elapsed().as_millis() as u64 + 1) * 1000;
+        let nps = nodes_searched / (start_time.elapsed().unwrap().as_millis() + 1) * 1000;
         println!(
             "info nodes {} nps {} depth {}",
-            self.nodes_searched, nps, depth
+            nodes_searched, nps, depth
         );
         return (best_move, best_evaluation);
     }
@@ -137,6 +135,7 @@ fn sort_moves(scores: &mut [i16], moves: &mut MoveList) {
     }
 }
 
+#[inline]
 fn order_moves(position: &Chess, tt: &TranspositionTable, capture_moves: bool) -> MoveList {
     // MVV-LVA (most valuable capture, least valuable attacker)
     // Hash move
@@ -145,19 +144,22 @@ fn order_moves(position: &Chess, tt: &TranspositionTable, capture_moves: bool) -
         true => position.capture_moves(),
     };
 
-    let hash_move = match tt.get(
+    let mut hash_move = NULL_MOVE;
+
+    if !capture_moves {
+    hash_move = match tt.get(
         &position
             .zobrist_hash::<Zobrist64>(shakmaty::EnPassantMode::Legal)
             .0,
     ) {
         Some(transposition) => transposition.best_move,
         None => NULL_MOVE,
-    };
+    };}
 
     let mut scores = [0; 256]; // 256 should be large enough
 
     for (i, chess_move) in legal_moves.iter().enumerate() {
-        if chess_move == &hash_move {
+        if !capture_moves && (chess_move == &hash_move) {
             scores[i] = -9999;
         } else if chess_move.is_capture() {
             let attacker = match chess_move.role() {
@@ -193,17 +195,20 @@ fn quiesce(
     beta: i16,
     depth_from_root: u8,
     tt: &TranspositionTable,
+    mut nodes_searched: u128,
     max_time: u64,
     start_time: SystemTime,
-) -> Option<i16> {
+) -> Option<(i16, u128)> {
     if start_time.elapsed().unwrap() >= Duration::from_millis(max_time) {
         return None;
     }
 
+    nodes_searched += 1;
+
     let stand_pat = evaluate(&position);
 
     if stand_pat >= beta {
-        return Some(beta);
+        return Some((beta, nodes_searched));
     }
     if alpha < stand_pat {
         alpha = stand_pat;
@@ -214,25 +219,28 @@ fn quiesce(
     for chess_move in moves {
         let mut new_position = position.clone();
         new_position.play_unchecked(&chess_move);
-        let evaluation = -quiesce(
+        let (evaluation, new_searched) = quiesce(
             &new_position,
             -beta,
             -alpha,
-            depth_from_root + 1,
+            depth_from_root,
             tt,
+            nodes_searched,
             max_time,
             start_time,
         )?;
+        nodes_searched = new_searched;
+        let evaluation = -evaluation;
 
         if evaluation >= beta {
-            return Some(beta);
+            return Some((beta, nodes_searched));
         }
         if evaluation > alpha {
             alpha = evaluation;
         }
     }
 
-    return Some(alpha);
+    return Some((alpha, nodes_searched));
 }
 
 fn alpha_beta(
@@ -242,12 +250,16 @@ fn alpha_beta(
     depth_left: u8,
     depth_from_root: u8,
     tt: &mut TranspositionTable,
+    mut nodes_searched: u128,
     max_time: u64,
     start_time: SystemTime,
-) -> Option<i16> {
+) -> Option<(i16, u128)> {
     if start_time.elapsed().unwrap() >= Duration::from_millis(max_time) {
         return None;
     }
+
+    nodes_searched += 1;
+
     let zobrist = position
         .zobrist_hash::<Zobrist64>(shakmaty::EnPassantMode::Legal)
         .0;
@@ -257,19 +269,21 @@ fn alpha_beta(
         let mut new_position = position.clone();
         let chess_move = table_lookup.clone().unwrap().0;
         new_position.play_unchecked(&chess_move);
-        return Some(table_lookup.unwrap().1);
+        return Some((table_lookup.unwrap().1, nodes_searched));
     }
 
     if depth_left == 0 {
-        let evaluation = quiesce(
+        let (evaluation, new_seached) = quiesce(
             position,
             alpha,
             beta,
             depth_from_root + 1,
             tt,
+            nodes_searched,
             max_time,
             start_time,
         )?;
+        nodes_searched = new_seached;
 
         tt.insert(
             zobrist,
@@ -278,13 +292,13 @@ fn alpha_beta(
             depth_left,
             EvaluationType::Exact,
         );
-        return Some(evaluation);
+        return Some((evaluation, nodes_searched));
     }
 
     let moves = order_moves(&position, &tt, false);
 
     if moves.len() == 0 {
-        return Some(0);
+        return Some((0, nodes_searched));
     }
 
     let mut best_move = NULL_MOVE;
@@ -292,16 +306,19 @@ fn alpha_beta(
     for chess_move in moves {
         let mut new_position = position.clone();
         new_position.play_unchecked(&chess_move);
-        let evaluation = -alpha_beta(
+        let (evaluation, new_searched) = alpha_beta(
             &new_position,
             -beta,
             -alpha,
             depth_left - 1,
             depth_from_root + 1,
             tt,
+            nodes_searched,
             max_time,
             start_time,
         )?;
+        nodes_searched = new_searched;
+        let evaluation = -evaluation;
         if evaluation >= beta {
             tt.insert(
                 zobrist,
@@ -310,7 +327,7 @@ fn alpha_beta(
                 depth_left,
                 EvaluationType::Beta,
             );
-            return Some(beta);
+            return Some((beta, nodes_searched));
         }
         if evaluation > alpha {
             alpha = evaluation;
@@ -319,7 +336,7 @@ fn alpha_beta(
     }
 
     tt.insert(zobrist, best_move, alpha, depth_left, EvaluationType::Alpha);
-    return Some(alpha);
+    return Some((alpha, nodes_searched));
 }
 
 pub fn root_search(
@@ -327,8 +344,9 @@ pub fn root_search(
     depth_left: u8,
     tt: &mut TranspositionTable,
     max_time: u64,
-) -> Option<(Move, i16)> {
+) -> Option<(Move, i16, u128)> {
     let start_time = SystemTime::now();
+    let mut nodes_searched = 1;
     let zobrist = position
         .zobrist_hash::<Zobrist64>(shakmaty::EnPassantMode::Legal)
         .0;
@@ -343,16 +361,19 @@ pub fn root_search(
     for chess_move in moves {
         let mut new_position = position.clone();
         new_position.play_unchecked(&chess_move);
-        let evaluation = -alpha_beta(
+        let (evaluation, new_searched) = alpha_beta(
             &new_position,
             -beta,
             -alpha,
             depth_left - 1,
             1,
             tt,
+            nodes_searched,
             max_time,
             start_time,
         )?;
+        nodes_searched = new_searched;
+        let evaluation = -evaluation;
 
         if evaluation >= beta {
             tt.insert(
@@ -362,7 +383,7 @@ pub fn root_search(
                 depth_left,
                 EvaluationType::Beta,
             );
-            return Some((chess_move, beta));
+            return Some((chess_move, beta, nodes_searched));
         }
         if evaluation > alpha {
             alpha = evaluation;
@@ -377,7 +398,7 @@ pub fn root_search(
         depth_left,
         EvaluationType::Alpha,
     );
-    return Some((best_move, alpha));
+    return Some((best_move, alpha, nodes_searched));
 }
 
 extern crate test;
@@ -403,13 +424,14 @@ mod tests {
         let mut tt = TranspositionTable::new(64);
 
         // Call your alpha-beta function
-        let evaluation = alpha_beta(
+        let (evaluation, _) = alpha_beta(
             &position,
             NEGATIVE_INFINITY,
             POSITIVE_INFINITY,
             3,
             0,
             &mut tt,
+            0,
             1000,
             SystemTime::now(),
         )
@@ -426,7 +448,7 @@ mod tests {
         let mut tt = TranspositionTable::new(64);
 
         // Call your alpha-beta function
-        let (_, evaluation) = root_search(&mut position, 3, &mut tt, 1000).unwrap();
+        let (_, evaluation, _) = root_search(&mut position, 3, &mut tt, 1000).unwrap();
 
         // Assert that the result is as expected
         assert!(evaluation >= 0);
@@ -527,6 +549,7 @@ mod tests {
                 3,
                 0,
                 &mut tt,
+                0,
                 1000,
                 SystemTime::now(),
             )
