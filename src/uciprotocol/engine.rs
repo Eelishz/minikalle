@@ -237,6 +237,33 @@ fn quiesce(
     return Some((alpha, nodes_searched));
 }
 
+#[inline]
+fn is_passed_pawn(position: &Chess) -> bool {
+    // TODO
+    false
+}
+
+#[inline]
+fn calculate_extension(m: &Move, position: &Chess, depth_left: u8) -> u8 {
+    if depth_left >= 3 {
+        return 0;
+    }
+    if m.is_capture() {
+        return 1;
+    }
+    if m.is_promotion() {
+        return 1;
+    }
+    if position.is_check() {
+        return 1;
+    }
+    if is_passed_pawn(position) {
+       return 1;
+    }
+
+    return 0;
+}
+
 fn alpha_beta(
     position: &Chess,
     mut alpha: i16,
@@ -327,11 +354,14 @@ fn alpha_beta(
     for chess_move in moves {
         let mut new_position = position.clone();
         new_position.play_unchecked(&chess_move);
+
+        let extension = calculate_extension(&chess_move, position, depth_left);
+
         let (evaluation, new_searched) = alpha_beta(
             &new_position,
             -beta,
             -alpha,
-            depth_left - 1,
+            depth_left + extension - 1,
             depth_from_root + 1,
             tt,
             nodes_searched,
