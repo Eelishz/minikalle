@@ -52,7 +52,7 @@ impl Engine {
         let mut depth: u8 = 1;
 
         while depth < max_depth {
-            let search = root_search(position, depth, &mut self.tt, max_time);
+            let search = root_search(position, depth, &mut self.tt, max_time, start_time);
 
             match search {
                 Some(s) => {
@@ -365,8 +365,8 @@ pub fn root_search(
     depth_left: u8,
     tt: &mut TranspositionTable,
     max_time: u64,
+    start_time: SystemTime
 ) -> Option<(Move, i16, u64)> {
-    let start_time = SystemTime::now();
     let mut nodes_searched = 1;
     let zobrist = position
         .zobrist_hash::<Zobrist64>(shakmaty::EnPassantMode::Legal)
@@ -462,7 +462,7 @@ mod tests {
         let mut tt = TranspositionTable::new(64);
 
         // Call your alpha-beta function
-        let (_, evaluation, _) = root_search(&mut position, 3, &mut tt, 1000).unwrap();
+        let (_, evaluation, _) = root_search(&mut position, 3, &mut tt, 1000, SystemTime::now()).unwrap();
 
         // Assert that the result is as expected
         assert!(evaluation >= 0);

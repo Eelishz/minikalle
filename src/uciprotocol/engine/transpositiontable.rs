@@ -54,10 +54,12 @@ impl TranspositionTable {
         }
     }
 
+    #[inline]
     fn index(&self, key: &u64) -> usize {
         (key % self.count) as usize
     }
 
+    #[inline]
     pub fn insert(
         &mut self,
         key: u64,
@@ -77,6 +79,7 @@ impl TranspositionTable {
         self.transpositions[index] = entry;
     }
 
+    #[inline]
     pub fn get(&self, key: &u64) -> Option<Transposition> {
         let index = self.index(key);
         let transposition = &self.transpositions[index];
