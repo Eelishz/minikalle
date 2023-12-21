@@ -1,7 +1,7 @@
 use shakmaty::{Board, Chess, Color, Outcome, Position};
 mod squaretables;
+use super::{NEGATIVE_INFINITY, POSITIVE_INFINITY};
 use squaretables::parse_tables;
-use super::{POSITIVE_INFINITY, NEGATIVE_INFINITY};
 
 #[inline]
 fn count_pieces(board: &Board) -> i16 {
@@ -21,6 +21,8 @@ fn count_pieces(board: &Board) -> i16 {
 }
 
 pub fn evaluate(position: &Chess) -> i16 {
+    let side = position.turn();
+    let board = position.board();
     let evaluation = match position.outcome() {
         Some(Outcome::Draw) => return 0,
         Some(Outcome::Decisive { winner }) => {
@@ -30,9 +32,9 @@ pub fn evaluate(position: &Chess) -> i16 {
                 NEGATIVE_INFINITY
             }
         }
-        None => count_pieces(position.board()) + parse_tables(position.board()),
+        None => count_pieces(board) + parse_tables(board),
     };
-    match position.turn() {
+    match side {
         Color::Black => -evaluation,
         Color::White => evaluation,
     }

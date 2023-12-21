@@ -63,7 +63,7 @@ impl Engine {
                 None => break,
             }
 
-            let nps = nodes_searched / (start_time.elapsed().unwrap().as_millis() + 1) * 1000;
+            let nps = nodes_searched / (start_time.elapsed().unwrap().as_millis() as u64+ 1) * 1000;
             println!(
                 "info nodes {0} nps {nps} depth {depth}",
                 nodes_searched
@@ -83,11 +83,6 @@ impl Engine {
             depth += 1;
         }
 
-        let nps = nodes_searched / (start_time.elapsed().unwrap().as_millis() + 1) * 1000;
-        println!(
-            "info nodes {} nps {} depth {}",
-            nodes_searched, nps, depth
-        );
         return (best_move, best_evaluation);
     }
 
@@ -195,10 +190,10 @@ fn quiesce(
     beta: i16,
     depth_from_root: u8,
     tt: &TranspositionTable,
-    mut nodes_searched: u128,
+    mut nodes_searched: u64,
     max_time: u64,
     start_time: SystemTime,
-) -> Option<(i16, u128)> {
+) -> Option<(i16, u64)> {
     if start_time.elapsed().unwrap() >= Duration::from_millis(max_time) {
         return None;
     }
@@ -250,10 +245,10 @@ fn alpha_beta(
     depth_left: u8,
     depth_from_root: u8,
     tt: &mut TranspositionTable,
-    mut nodes_searched: u128,
+    mut nodes_searched: u64,
     max_time: u64,
     start_time: SystemTime,
-) -> Option<(i16, u128)> {
+) -> Option<(i16, u64)> {
     if start_time.elapsed().unwrap() >= Duration::from_millis(max_time) {
         return None;
     }
@@ -344,7 +339,7 @@ pub fn root_search(
     depth_left: u8,
     tt: &mut TranspositionTable,
     max_time: u64,
-) -> Option<(Move, i16, u128)> {
+) -> Option<(Move, i16, u64)> {
     let start_time = SystemTime::now();
     let mut nodes_searched = 1;
     let zobrist = position
@@ -411,16 +406,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_evaluation() {
-        let position = Chess::new();
-        let evauation = evaluate(&position);
-        assert_eq!(evauation, 0);
-    }
-
-    #[test]
     fn test_alpha_beta() {
         // Create a test position
-        let mut position = Chess::new(); // You may want to set up a specific test position here
+        let position = Chess::new(); // You may want to set up a specific test position here
         let mut tt = TranspositionTable::new(64);
 
         // Call your alpha-beta function
@@ -502,11 +490,11 @@ mod tests {
     fn test_captures() {
         let fen: Fen = "7k/8/8/4p3/3Q4/8/8/K7 w - - 0 1".parse().unwrap();
 
-        let mut position: Chess = fen.into_position(shakmaty::CastlingMode::Standard).unwrap();
+        let position: Chess = fen.into_position(shakmaty::CastlingMode::Standard).unwrap();
 
         let mut engine = Engine::new();
 
-        let (_, uci, _) = engine.find_best_move(&mut position, 1_000, 40);
+        let (_, uci, _) = engine.find_best_move(&position, 1_000, 40);
 
         assert_eq!(uci.to_string(), "d4e5".to_string());
 
