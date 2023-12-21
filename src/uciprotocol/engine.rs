@@ -2,9 +2,9 @@ use rand::seq::SliceRandom;
 use shakmaty::zobrist::{Zobrist64, ZobristHash};
 use shakmaty::{uci::Uci, CastlingMode, Chess, Move, Position};
 use shakmaty::{MoveList, Role, Square};
-use std::time::{Duration, SystemTime};
 use std::collections::HashMap;
 use std::str::FromStr;
+use std::time::{Duration, SystemTime};
 mod evaluator;
 mod openings;
 mod transpositiontable;
@@ -63,11 +63,9 @@ impl Engine {
                 None => break,
             }
 
-            let nps = nodes_searched / (start_time.elapsed().unwrap().as_millis() as u64+ 1) * 1000;
-            println!(
-                "info nodes {0} nps {nps} depth {depth}",
-                nodes_searched
-            );
+            let nps =
+                nodes_searched / (start_time.elapsed().unwrap().as_millis() as u64 + 1) * 1000;
+            println!("info nodes {0} nps {nps} depth {depth}", nodes_searched);
             println!("info score cp {}", best_evaluation);
             match best_evaluation {
                 POSITIVE_INFINITY => {
@@ -142,14 +140,15 @@ fn order_moves(position: &Chess, tt: &TranspositionTable, capture_moves: bool) -
     let mut hash_move = NULL_MOVE;
 
     if !capture_moves {
-    hash_move = match tt.get(
-        &position
-            .zobrist_hash::<Zobrist64>(shakmaty::EnPassantMode::Legal)
-            .0,
-    ) {
-        Some(transposition) => transposition.best_move,
-        None => NULL_MOVE,
-    };}
+        hash_move = match tt.get(
+            &position
+                .zobrist_hash::<Zobrist64>(shakmaty::EnPassantMode::Legal)
+                .0,
+        ) {
+            Some(transposition) => transposition.best_move,
+            None => NULL_MOVE,
+        };
+    }
 
     let mut scores = [0; 256]; // 256 should be large enough
 
@@ -288,6 +287,33 @@ fn alpha_beta(
             EvaluationType::Exact,
         );
         return Some((evaluation, nodes_searched));
+    }
+
+    let null_move_possible = !position.is_check();
+
+    if null_move_possible && depth_left >= 3 {
+        let r = 3;
+        let new_position = position.clone();
+        let new_position = new_position.swap_turn().unwrap();
+
+        let (evaluation, new_searched) = alpha_beta(
+            &new_position,
+            -beta,
+            1 - beta,
+            (depth_left as i8 - r - 1).max(0) as u8,
+            depth_from_root + 1,
+            tt,
+            nodes_searched,
+            max_time,
+            start_time,
+        )?;
+
+        let evaluation = -evaluation;
+        nodes_searched = new_searched;
+
+        if evaluation >= beta {
+            return Some((beta, nodes_searched));
+        }
     }
 
     let moves = order_moves(&position, &tt, false);
