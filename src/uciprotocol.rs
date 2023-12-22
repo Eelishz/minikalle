@@ -71,7 +71,12 @@ impl UciProtocol {
     fn excecute_command(&mut self, tokens: &Vec<Token>) {
         for token in tokens {
             match token {
-                Token::UCI => println!("uciok"),
+                Token::UCI => {
+                    println!("id name minikalle");
+                    println!("id author Eelis Holmstén");
+                    println!("option name Hash type spin default 64 min 1 max 33554432");
+                    println!("uciok");
+                }
                 Token::IsReady => println!("readyok"),
                 Token::UciNewGame => self.new_game(),
                 Token::FENStr(fenstr) => {
