@@ -3,6 +3,11 @@
 use std::env::args;
 
 mod uciprotocol;
+mod engine;
+mod evaluation;
+mod squaretables;
+mod transpositiontable;
+mod openings;
 
 fn main() {
     let args = args();

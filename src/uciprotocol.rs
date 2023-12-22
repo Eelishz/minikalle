@@ -4,7 +4,7 @@
 use regex::Regex;
 use shakmaty::{fen::Fen, uci::Uci, Chess, Color, Move, Position};
 use std::io::stdin;
-mod engine;
+use crate::engine;
 
 #[derive(Debug, PartialEq)]
 enum Token {
