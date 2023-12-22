@@ -7,10 +7,10 @@ use shakmaty::{uci::Uci, CastlingMode, Chess, Move, Position};
 use shakmaty::{MoveList, Role, Square};
 use std::collections::HashMap;
 use std::str::FromStr;
-use std::time::{SystemTime};
+use std::time::SystemTime;
 
-pub const POSITIVE_INFINITY: i16 = i16::MAX - 1;
-pub const NEGATIVE_INFINITY: i16 = i16::MIN + 1;
+pub const POSITIVE_INFINITY: i16 = i16::MAX - 1_000;
+pub const NEGATIVE_INFINITY: i16 = i16::MIN + 1_000;
 
 const NULL_MOVE: Move = Move::Normal {
     role: Role::Pawn,
@@ -42,35 +42,84 @@ impl Engine {
 
     fn iterative_deepening(
         &mut self,
-        position: &mut Chess,
+        position: &Chess,
         max_time: u64,
         max_depth: u8,
     ) -> (Move, i16) {
         let start_time = SystemTime::now();
 
-        let mut best_move = position.legal_moves()[0].clone();
-        let mut best_evaluation = NEGATIVE_INFINITY;
-        let mut nodes_searched = 0;
+        // Initial guess for aspiration window
 
-        let mut depth: u8 = 1;
+        let (mut best_move, mut evaluation, mut nodes_searched) = root_search(
+            position,
+            NEGATIVE_INFINITY,
+            POSITIVE_INFINITY,
+            1,
+            &mut self.tt,
+            max_time,
+            &start_time,
+        )
+        .unwrap();
+        let nps =
+                nodes_searched / (start_time.elapsed().unwrap().as_millis() as u64 + 1) * 1000;
+
+        println!("info nodes {0} nps {nps} depth 1", nodes_searched);
+        match evaluation {
+            POSITIVE_INFINITY => {
+                println!("info score mate 1");
+                return (best_move, evaluation);
+            }
+            NEGATIVE_INFINITY => {
+                println!("info score mate -1");
+                return (best_move, evaluation);
+            }
+            _ => println!("info score cp {}", evaluation),
+        }
+
+        let mut depth: u8 = 2;
 
         while depth < max_depth {
-            let search = root_search(position, depth, &mut self.tt, max_time, &start_time);
+            let mut window = 50;
+            loop {
+                let alpha = evaluation - window;
+                let beta = evaluation + window;
 
-            match search {
-                Some(s) => {
-                    best_move = s.clone().0;
-                    best_evaluation = s.1;
-                    nodes_searched += s.2;
+                let search = root_search(
+                    position,
+                    alpha,
+                    beta,
+                    depth,
+                    &mut self.tt,
+                    max_time,
+                    &start_time,
+                );
+
+                let new_evaluation;
+                let new_best_move;
+
+                match search {
+                    Some(s) => {
+                        new_best_move = s.clone().0;
+                        new_evaluation = s.1;
+                        nodes_searched += s.2;
+                    }
+                    None => break,
                 }
-                None => break,
+
+                if alpha < evaluation && evaluation < beta {
+                    best_move = new_best_move;
+                    evaluation = new_evaluation;
+                    break;
+                }
+
+                window *= 2;
             }
 
             let nps =
                 nodes_searched / (start_time.elapsed().unwrap().as_millis() as u64 + 1) * 1000;
+
             println!("info nodes {0} nps {nps} depth {depth}", nodes_searched);
-            println!("info score cp {}", best_evaluation);
-            match best_evaluation {
+            match evaluation {
                 POSITIVE_INFINITY => {
                     println!("info score mate {depth}");
                     break;
@@ -79,12 +128,13 @@ impl Engine {
                     println!("info score mate -{depth}");
                     break;
                 }
-                _ => println!("info score cp {}", best_evaluation),
+                _ => println!("info score cp {}", evaluation),
             }
+
             depth += 1;
         }
 
-        return (best_move, best_evaluation);
+        return (best_move, evaluation);
     }
 
     pub fn find_best_move(
@@ -397,6 +447,8 @@ fn alpha_beta(
 
 pub fn root_search(
     position: &Chess,
+    mut alpha: i16,
+    beta: i16,
     depth_left: u8,
     tt: &mut TranspositionTable,
     max_time: u64,
@@ -406,9 +458,6 @@ pub fn root_search(
     let zobrist = position
         .zobrist_hash::<Zobrist64>(shakmaty::EnPassantMode::Legal)
         .0;
-
-    let mut alpha = NEGATIVE_INFINITY;
-    let beta = POSITIVE_INFINITY;
 
     let moves = order_moves(&position, tt, false);
 
@@ -497,8 +546,16 @@ mod tests {
         let mut tt = TranspositionTable::new(64);
 
         // Call your alpha-beta function
-        let (_, evaluation, _) =
-            root_search(&mut position, 3, &mut tt, 1000, &SystemTime::now()).unwrap();
+        let (_, evaluation, _) = root_search(
+            &mut position,
+            NEGATIVE_INFINITY,
+            POSITIVE_INFINITY,
+            3,
+            &mut tt,
+            1000,
+            &SystemTime::now(),
+        )
+        .unwrap();
 
         // Assert that the result is as expected
         assert!(evaluation >= 0);
@@ -513,7 +570,7 @@ mod tests {
 
         let mut position: Chess = fen.into_position(shakmaty::CastlingMode::Standard).unwrap();
 
-        let (_, uci, _) = engine.find_best_move(&mut position, 1_000, 3);
+        let (_, uci, _) = engine.find_best_move(&mut position, 1_000, 5);
 
         assert_eq!(uci.to_string(), "d3d8".to_string());
 
@@ -523,7 +580,7 @@ mod tests {
 
         let mut position: Chess = fen.into_position(shakmaty::CastlingMode::Standard).unwrap();
 
-        let (_, uci, _) = engine.find_best_move(&mut position, 1_000, 3);
+        let (_, uci, _) = engine.find_best_move(&mut position, 1_000, 5);
 
         assert_eq!(uci.to_string(), "e1f1".to_string());
 
@@ -533,7 +590,7 @@ mod tests {
 
         let mut position: Chess = fen.into_position(shakmaty::CastlingMode::Standard).unwrap();
 
-        let (_, uci, _) = engine.find_best_move(&mut position, 1_000, 3);
+        let (_, uci, _) = engine.find_best_move(&mut position, 1_000, 5);
 
         assert_eq!(uci.to_string(), "e6e1".to_string());
 
@@ -543,7 +600,7 @@ mod tests {
 
         let mut position: Chess = fen.into_position(shakmaty::CastlingMode::Standard).unwrap();
 
-        let (_, uci, _) = engine.find_best_move(&mut position, 1_000, 3);
+        let (_, uci, _) = engine.find_best_move(&mut position, 1_000, 5);
 
         assert_eq!(uci.to_string(), "e8e1".to_string());
     }
