@@ -96,7 +96,7 @@ impl UciProtocol {
 
     fn time_management(&self, time_left: u64) -> u64{
         let moves_out_of_book = self.n_moves; //TODO
-        let n_moves = moves_out_of_book.min(10);
+        let n_moves = moves_out_of_book.max(10);
         let factor = 2 - n_moves / 10;
         let number_of_moves_left = (60 - moves_out_of_book).max(10);
         let target = time_left / number_of_moves_left as u64;
