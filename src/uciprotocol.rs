@@ -41,6 +41,7 @@ enum Token {
 pub struct UciProtocol {
     chess_engine: engine::Engine,
     position: Chess,
+    n_moves: u16,
 }
 
 impl UciProtocol {
@@ -48,6 +49,7 @@ impl UciProtocol {
         UciProtocol {
             chess_engine: engine::Engine::new(),
             position: Chess::new(),
+            n_moves: 0,
         }
     }
 
@@ -60,6 +62,7 @@ impl UciProtocol {
     }
 
     fn new_game(&mut self) {
+        self.n_moves = 0;
         self.chess_engine.new_game();
     }
 
@@ -89,6 +92,15 @@ impl UciProtocol {
                 _ => (),
             }
         }
+    }
+
+    fn time_management(&self, time_left: u64) -> u64{
+        let moves_out_of_book = self.n_moves; //TODO
+        let n_moves = moves_out_of_book.min(10);
+        let factor = 2 - n_moves / 10;
+        let number_of_moves_left = (60 - moves_out_of_book).max(10);
+        let target = time_left / number_of_moves_left as u64;
+        return factor as u64 * target;
     }
 
     fn handle_go(&mut self, tokens: &Vec<Token>) {
@@ -121,13 +133,11 @@ impl UciProtocol {
             }
         }
 
-        let max_time: u64;
         let max_depth = depth as u8;
-
-        match turn {
-            Color::White => max_time = (wtime / 20 + winc) as u64,
-            Color::Black => max_time = (btime / 20 + binc) as u64,
-        }
+        let max_time = match turn {
+            Color::White => self.time_management(wtime),
+            Color::Black => self.time_management(btime),
+        };
 
         let chess_move: Move;
         let uci: Uci;
@@ -146,6 +156,7 @@ impl UciProtocol {
                     .find_best_move(&self.position.clone(), max_time, max_depth);
         }
 
+        self.n_moves += 1;
         self.position = self.position.clone().play(&chess_move).unwrap();
 
         println!("bestmove {}", uci);

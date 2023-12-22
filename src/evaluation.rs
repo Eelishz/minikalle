@@ -1,5 +1,4 @@
 use shakmaty::{Board, Chess, Color, Outcome, Position};
-use crate::squaretables;
 use crate::engine::{NEGATIVE_INFINITY, POSITIVE_INFINITY};
 use crate::squaretables::parse_tables;
 

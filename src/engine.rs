@@ -1,3 +1,6 @@
+use crate::evaluation::evaluate;
+use crate::openings::OPENINGS;
+use crate::transpositiontable::{EvaluationType, TranspositionTable};
 use rand::seq::SliceRandom;
 use shakmaty::zobrist::{Zobrist64, ZobristHash};
 use shakmaty::{uci::Uci, CastlingMode, Chess, Move, Position};
@@ -5,15 +8,9 @@ use shakmaty::{MoveList, Role, Square};
 use std::collections::HashMap;
 use std::str::FromStr;
 use std::time::{Duration, SystemTime};
-use arrayvec::ArrayVec;
-use crate::evaluation::evaluate;
-use crate::openings::OPENINGS;
-use crate::transpositiontable::{EvaluationType, TranspositionTable};
 
 pub const POSITIVE_INFINITY: i16 = i16::MAX - 1;
 pub const NEGATIVE_INFINITY: i16 = i16::MIN + 1;
-
-const REPETITION_TABLE_SIZE: usize = 128;
 
 const NULL_MOVE: Move = Move::Normal {
     role: Role::Pawn,
@@ -26,7 +23,6 @@ const NULL_MOVE: Move = Move::Normal {
 pub struct Engine {
     tt: TranspositionTable,
     book: HashMap<u64, Vec<String>>,
-    repetition_table: ArrayVec<u64, REPETITION_TABLE_SIZE>,
 }
 
 impl Engine {
@@ -35,13 +31,10 @@ impl Engine {
         Engine {
             tt: TranspositionTable::new(64),
             book,
-            repetition_table: ArrayVec::<u64, REPETITION_TABLE_SIZE>::new(),
         }
     }
 
-    pub fn new_game(&mut self) {
-        self.repetition_table.clear();
-    }
+    pub fn new_game(&mut self) {}
 
     fn iterative_deepening(
         &mut self,
@@ -106,7 +99,6 @@ impl Engine {
         }
         let mut position = position.clone();
         let (best_move, evaluation) = self.iterative_deepening(&mut position, max_time, max_depth);
-        self.repetition_table.push(zobrist.0);
         (
             best_move.clone(),
             best_move.clone().to_uci(CastlingMode::Standard),
@@ -119,18 +111,6 @@ impl Default for Engine {
     fn default() -> Engine {
         Engine::new()
     }
-}
-
-#[inline]
-fn probe_repetitions(table: &ArrayVec<u64, 128>) -> u8 {
-    let mut counts = [0; 128];
-
-    for &pos in table {
-        let index = pos as usize;
-        counts[index] += 1;
-    }
-
-    *counts.iter().max().unwrap_or(&0)
 }
 
 #[inline]
@@ -257,8 +237,10 @@ fn quiesce(
 }
 
 #[inline]
-fn is_passed_pawn(position: &Chess) -> bool {
+fn is_passed_pawn(_position: &Chess) -> bool {
     // TODO
+    // This function should get optimized away,
+    // but I have left this here as a reminder to myself.
     false
 }
 
@@ -277,7 +259,7 @@ fn calculate_extension(m: &Move, position: &Chess, depth_left: u8) -> u8 {
         return 1;
     }
     if is_passed_pawn(position) {
-       return 1;
+        return 1;
     }
 
     return 0;
@@ -414,7 +396,7 @@ pub fn root_search(
     depth_left: u8,
     tt: &mut TranspositionTable,
     max_time: u64,
-    start_time: SystemTime
+    start_time: SystemTime,
 ) -> Option<(Move, i16, u64)> {
     let mut nodes_searched = 1;
     let zobrist = position
@@ -511,7 +493,8 @@ mod tests {
         let mut tt = TranspositionTable::new(64);
 
         // Call your alpha-beta function
-        let (_, evaluation, _) = root_search(&mut position, 3, &mut tt, 1000, SystemTime::now()).unwrap();
+        let (_, evaluation, _) =
+            root_search(&mut position, 3, &mut tt, 1000, SystemTime::now()).unwrap();
 
         // Assert that the result is as expected
         assert!(evaluation >= 0);
