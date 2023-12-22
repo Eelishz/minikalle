@@ -51,7 +51,7 @@ impl Engine {
         let mut depth: u8 = 1;
 
         while depth < max_depth {
-            let search = root_search(position, depth, &mut self.tt, max_time, start_time);
+            let search = root_search(position, depth, &mut self.tt, max_time, &start_time);
 
             match search {
                 Some(s) => {
@@ -190,7 +190,7 @@ fn quiesce(
     tt: &TranspositionTable,
     mut nodes_searched: u64,
     max_time: u64,
-    start_time: SystemTime,
+    start_time: &SystemTime,
 ) -> Option<(i16, u64)> {
     if start_time.elapsed().unwrap().as_millis() as u64 >= max_time {
         return None;
@@ -274,7 +274,7 @@ fn alpha_beta(
     tt: &mut TranspositionTable,
     mut nodes_searched: u64,
     max_time: u64,
-    start_time: SystemTime,
+    start_time: &SystemTime,
 ) -> Option<(i16, u64)> {
     if start_time.elapsed().unwrap().as_millis() as u64 >= max_time {
         return None;
@@ -597,7 +597,7 @@ mod tests {
                 &mut tt,
                 0,
                 1000,
-                SystemTime::now(),
+                &SystemTime::now(),
             )
         })
     }

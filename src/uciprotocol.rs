@@ -126,8 +126,8 @@ impl UciProtocol {
 
         let max_depth = depth as u8;
         let max_time = match turn {
-            Color::White => wtime / 15,
-            Color::Black => btime / 15,
+            Color::White => wtime / 20 + winc,
+            Color::Black => btime / 20 + binc,
         };
 
         let chess_move: Move;
