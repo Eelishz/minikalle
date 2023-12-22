@@ -396,7 +396,7 @@ pub fn root_search(
     depth_left: u8,
     tt: &mut TranspositionTable,
     max_time: u64,
-    start_time: SystemTime,
+    start_time: &SystemTime,
 ) -> Option<(Move, i16, u64)> {
     let mut nodes_searched = 1;
     let zobrist = position
@@ -422,7 +422,7 @@ pub fn root_search(
             tt,
             nodes_searched,
             max_time,
-            start_time,
+            &start_time,
         )?;
         nodes_searched = new_searched;
         let evaluation = -evaluation;
@@ -478,7 +478,7 @@ mod tests {
             &mut tt,
             0,
             1000,
-            SystemTime::now(),
+            &SystemTime::now(),
         )
         .unwrap();
 
@@ -494,7 +494,7 @@ mod tests {
 
         // Call your alpha-beta function
         let (_, evaluation, _) =
-            root_search(&mut position, 3, &mut tt, 1000, SystemTime::now()).unwrap();
+            root_search(&mut position, 3, &mut tt, 1000, &SystemTime::now()).unwrap();
 
         // Assert that the result is as expected
         assert!(evaluation >= 0);
