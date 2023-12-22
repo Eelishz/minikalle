@@ -74,7 +74,7 @@ impl UciProtocol {
                 Token::UCI => {
                     println!("id name minikalle");
                     println!("id author Eelis Holmstén");
-                    println!("option name Hash type spin default 64 min 1 max 33554432");
+                    println!("option name Hash type spin default 16 min 1 max 33554432");
                     println!("uciok");
                 }
                 Token::IsReady => println!("readyok"),
