@@ -60,6 +60,11 @@ impl Engine {
             &start_time,
         )
         .unwrap();
+        
+        let mut window = 50;
+        let mut alpha = evaluation - window;
+        let mut beta = evaluation + window;
+        
         let nps =
                 nodes_searched / (start_time.elapsed().unwrap().as_millis() as u64 + 1) * 1000;
 
@@ -79,42 +84,40 @@ impl Engine {
         let mut depth: u8 = 2;
 
         while depth < max_depth {
-            let mut window = 50;
-            loop {
-                let alpha = evaluation - window;
-                let beta = evaluation + window;
 
-                let search = root_search(
-                    position,
-                    alpha,
-                    beta,
-                    depth,
-                    &mut self.tt,
-                    max_time,
-                    &start_time,
-                );
+            let search = root_search(
+                position,
+                alpha,
+                beta,
+                depth,
+                &mut self.tt,
+                max_time,
+                &start_time,
+            );
 
-                let new_evaluation;
-                let new_best_move;
+            let new_evaluation;
+            let new_best_move;
 
-                match search {
-                    Some(s) => {
-                        new_best_move = s.clone().0;
-                        new_evaluation = s.1;
-                        nodes_searched += s.2;
-                    }
-                    None => break,
+            match search {
+                Some(s) => {
+                    new_best_move = s.clone().0;
+                    new_evaluation = s.1;
+                    nodes_searched += s.2;
                 }
-
-                if alpha < evaluation && evaluation < beta {
-                    best_move = new_best_move;
-                    evaluation = new_evaluation;
-                    break;
-                }
-
-                window *= 2;
+                None => break,
             }
 
+            if new_evaluation <= alpha || new_evaluation >= beta {
+                window *= 2;
+                alpha = evaluation - window;
+                beta = evaluation + window;
+                continue;
+            } else {
+                window = 50;
+                evaluation = new_evaluation;
+                best_move = new_best_move;
+            }
+                
             let nps =
                 nodes_searched / (start_time.elapsed().unwrap().as_millis() as u64 + 1) * 1000;
 
