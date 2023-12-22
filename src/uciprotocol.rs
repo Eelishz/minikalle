@@ -165,7 +165,6 @@ impl UciProtocol {
 
     fn set_option(&mut self, tokens: &Vec<Token>) {
         // TODO: de-jank, add more options
-        println!("{tokens:?}");
         let value: usize = match tokens.last().unwrap() {
             Token::OptionValue(x) => x.parse().unwrap(),
             _ => panic!(),
