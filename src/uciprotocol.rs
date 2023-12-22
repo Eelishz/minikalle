@@ -60,6 +60,7 @@ impl UciProtocol {
     }
 
     fn new_game(&mut self) {
+        self.chess_engine.new_game();
     }
 
     fn excecute_fen(&mut self, tokens: &Vec<Token>) {
