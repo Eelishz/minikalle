@@ -192,7 +192,7 @@ fn quiesce(
     max_time: u64,
     start_time: SystemTime,
 ) -> Option<(i16, u64)> {
-    if start_time.elapsed().unwrap() >= Duration::from_millis(max_time) {
+    if start_time.elapsed().unwrap().as_millis() as u64 >= max_time {
         return None;
     }
 
@@ -276,7 +276,7 @@ fn alpha_beta(
     max_time: u64,
     start_time: SystemTime,
 ) -> Option<(i16, u64)> {
-    if start_time.elapsed().unwrap() >= Duration::from_millis(max_time) {
+    if start_time.elapsed().unwrap().as_millis() as u64 >= max_time {
         return None;
     }
 
