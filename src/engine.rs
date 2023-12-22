@@ -7,7 +7,7 @@ use shakmaty::{uci::Uci, CastlingMode, Chess, Move, Position};
 use shakmaty::{MoveList, Role, Square};
 use std::collections::HashMap;
 use std::str::FromStr;
-use std::time::{Duration, SystemTime};
+use std::time::{SystemTime};
 
 pub const POSITIVE_INFINITY: i16 = i16::MAX - 1;
 pub const NEGATIVE_INFINITY: i16 = i16::MIN + 1;
@@ -29,12 +29,16 @@ impl Engine {
     pub fn new() -> Engine {
         let book = serde_json::from_str(&OPENINGS).unwrap();
         Engine {
-            tt: TranspositionTable::new(64),
+            tt: TranspositionTable::new(512),
             book,
         }
     }
 
     pub fn new_game(&mut self) {}
+
+    pub fn set_hash(&mut self, value: usize) {
+        self.tt = TranspositionTable::new(value);
+    }
 
     fn iterative_deepening(
         &mut self,

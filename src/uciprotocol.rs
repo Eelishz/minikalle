@@ -36,6 +36,8 @@ enum Token {
     Move(String),
     Number(u64),
     FENStr(String),
+    OptionName(String),
+    OptionValue(String)
 }
 
 pub struct UciProtocol {
@@ -66,7 +68,7 @@ impl UciProtocol {
         self.chess_engine.new_game();
     }
 
-    fn excecute_fen(&mut self, tokens: &Vec<Token>) {
+    fn excecute_command(&mut self, tokens: &Vec<Token>) {
         for token in tokens {
             match token {
                 Token::UCI => println!("uciok"),
@@ -89,6 +91,7 @@ impl UciProtocol {
                 }
                 Token::Go => self.handle_go(tokens),
                 Token::Stop => self.stop_search(),
+                Token::SetOption => self.set_option(tokens),
                 _ => (),
             }
         }
@@ -155,18 +158,28 @@ impl UciProtocol {
 
     fn stop_search(&mut self) {}
 
+    fn set_option(&mut self, tokens: &Vec<Token>) {
+        // TODO: de-jank, add more options
+        println!("{tokens:?}");
+        let value: usize = match tokens.last().unwrap() {
+            Token::OptionValue(x) => x.parse().unwrap(),
+            _ => panic!(),
+        };
+        self.chess_engine.set_hash(value);
+    }
+
     fn parse_message(&mut self, message: &String) {
-        let split_message = message.split_whitespace();
+        let mut split_message = message.split_whitespace();
 
         let mut tokens = vec![];
         let mut fen_buffer = String::new();
         let mut is_fen = false;
 
-        for symbol in split_message {
+        loop {
+            let Some(symbol) = split_message.next() else {break;};
             match symbol {
                 "uci" => tokens.push(Token::UCI),
                 "isready" => tokens.push(Token::IsReady),
-                "setoption" => tokens.push(Token::SetOption),
                 "register" => tokens.push(Token::Register),
                 "ucinewgame" => tokens.push(Token::UciNewGame),
                 "position" => tokens.push(Token::Position),
@@ -193,6 +206,13 @@ impl UciProtocol {
                 "stop" => tokens.push(Token::Stop),
                 "ponderhit" => tokens.push(Token::PonderHit),
                 "quit" => tokens.push(Token::Quit),
+                "setoption" => {
+                    tokens.push(Token::SetOption);
+                    assert_eq!(split_message.next().unwrap(), "name");
+                    tokens.push(Token::OptionName(split_message.next().unwrap().to_string()));
+                    assert_eq!(split_message.next().unwrap(), "value");
+                    tokens.push(Token::OptionValue(split_message.next().unwrap().to_string()));
+                }
                 _ => {
                     if is_fen {
                         fen_buffer.push(' '); //trailing space to account for split method stripping whitespace
@@ -220,7 +240,7 @@ impl UciProtocol {
             eprintln!("unreconized fen string {message}");
         }
 
-        self.excecute_fen(&tokens);
+        self.excecute_command(&tokens);
     }
 
     fn is_fen_string(&mut self, symbol: &str) -> bool {

@@ -43,10 +43,10 @@ pub struct TranspositionTable {
 }
 
 impl TranspositionTable {
-    pub fn new(desired_size_in_mb: u32) -> TranspositionTable {
+    pub fn new(desired_size_in_mb: usize) -> TranspositionTable {
         let tt_entry_size_in_bytes: usize = size_of::<Transposition>();
-        let desired_size_in_bytes: u32 = desired_size_in_mb * 1024 * 1024;
-        let num_entries: usize = (desired_size_in_bytes as usize) / tt_entry_size_in_bytes;
+        let desired_size_in_bytes = desired_size_in_mb * 1024 * 1024;
+        let num_entries: usize = (desired_size_in_bytes) / tt_entry_size_in_bytes;
 
         TranspositionTable {
             transpositions: vec![Transposition::new(); num_entries],
