@@ -60,13 +60,13 @@ impl Engine {
             &start_time,
         )
         .unwrap();
-        
-        let mut window = 50;
-        let mut alpha = evaluation - window;
-        let mut beta = evaluation + window;
-        
-        let nps =
-                nodes_searched / (start_time.elapsed().unwrap().as_millis() as u64 + 1) * 1000;
+
+        let mut a_window = 40;
+        let mut b_window = 40;
+        let mut alpha = evaluation - a_window;
+        let mut beta = evaluation + b_window;
+
+        let nps = nodes_searched / (start_time.elapsed().unwrap().as_millis() as u64 + 1) * 1000;
 
         println!("info nodes {0} nps {nps} depth 1", nodes_searched);
         match evaluation {
@@ -84,7 +84,6 @@ impl Engine {
         let mut depth: u8 = 2;
 
         while depth < max_depth {
-
             let search = root_search(
                 position,
                 alpha,
@@ -107,17 +106,21 @@ impl Engine {
                 None => break,
             }
 
-            if new_evaluation <= alpha || new_evaluation >= beta {
-                window *= 2;
-                alpha = evaluation - window;
-                beta = evaluation + window;
+            if new_evaluation <= alpha {
+                a_window *= 2;
+                alpha = evaluation - a_window;
+                if new_evaluation >= beta {
+                    b_window *= 2;
+                    beta = evaluation + b_window;
+                }
                 continue;
             } else {
-                window = 50;
+                a_window = 40;
+                b_window = 40;
                 evaluation = new_evaluation;
                 best_move = new_best_move;
             }
-                
+
             let nps =
                 nodes_searched / (start_time.elapsed().unwrap().as_millis() as u64 + 1) * 1000;
 
