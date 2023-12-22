@@ -9,8 +9,9 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use std::time::SystemTime;
 
-pub const POSITIVE_INFINITY: i16 = i16::MAX - 1;
-pub const NEGATIVE_INFINITY: i16 = i16::MIN + 1;
+pub const POS_INF: i16 = i16::MAX - 1_000;
+pub const NEG_INF: i16 = i16::MIN + 1_000;
+const INITIAL_WINDOW_SIZE: i16 = 15;
 
 const NULL_MOVE: Move = Move::Normal {
     role: Role::Pawn,
@@ -52,8 +53,8 @@ impl Engine {
 
         let (mut best_move, mut evaluation, mut nodes_searched) = root_search(
             position,
-            NEGATIVE_INFINITY,
-            POSITIVE_INFINITY,
+            NEG_INF,
+            POS_INF,
             1,
             &mut self.tt,
             max_time,
@@ -61,8 +62,8 @@ impl Engine {
         )
         .unwrap();
 
-        let mut a_window = 40;
-        let mut b_window = 40;
+        let mut a_window = INITIAL_WINDOW_SIZE;
+        let mut b_window = INITIAL_WINDOW_SIZE;
         let mut alpha = evaluation.saturating_sub(a_window);
         let mut beta = evaluation.saturating_add(b_window);
 
@@ -70,11 +71,11 @@ impl Engine {
 
         println!("info nodes {0} nps {nps} depth 1", nodes_searched);
         match evaluation {
-            POSITIVE_INFINITY => {
+            POS_INF => {
                 println!("info score mate 1");
                 return (best_move, evaluation);
             }
-            NEGATIVE_INFINITY => {
+            NEG_INF => {
                 println!("info score mate -1");
                 return (best_move, evaluation);
             }
@@ -115,8 +116,8 @@ impl Engine {
                 }
                 continue;
             } else {
-                a_window = 40;
-                b_window = 40;
+                a_window = INITIAL_WINDOW_SIZE;
+                b_window = INITIAL_WINDOW_SIZE;
                 evaluation = new_evaluation;
                 best_move = new_best_move;
             }
@@ -126,11 +127,11 @@ impl Engine {
 
             println!("info nodes {0} nps {nps} depth {depth}", nodes_searched);
             match evaluation {
-                POSITIVE_INFINITY => {
+                POS_INF => {
                     println!("info score mate {depth}");
                     break;
                 }
-                NEGATIVE_INFINITY => {
+                NEG_INF => {
                     println!("info score mate -{depth}");
                     break;
                 }
@@ -530,8 +531,8 @@ mod tests {
         // Call your alpha-beta function
         let (evaluation, _) = alpha_beta(
             &position,
-            NEGATIVE_INFINITY,
-            POSITIVE_INFINITY,
+            NEG_INF,
+            POS_INF,
             3,
             0,
             &mut tt,
@@ -554,8 +555,8 @@ mod tests {
         // Call your alpha-beta function
         let (_, evaluation, _) = root_search(
             &mut position,
-            NEGATIVE_INFINITY,
-            POSITIVE_INFINITY,
+            NEG_INF,
+            POS_INF,
             3,
             &mut tt,
             1000,
@@ -651,8 +652,8 @@ mod tests {
         let position = Chess::new();
         let mut tt = TranspositionTable::new(64);
 
-        let alpha = NEGATIVE_INFINITY;
-        let beta = POSITIVE_INFINITY;
+        let alpha = NEG_INF;
+        let beta = POS_INF;
 
         b.iter(|| {
             alpha_beta(

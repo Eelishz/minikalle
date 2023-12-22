@@ -1,5 +1,5 @@
 use shakmaty::{Board, Chess, Color, Outcome, Position};
-use crate::engine::{NEGATIVE_INFINITY, POSITIVE_INFINITY};
+use crate::engine::{POS_INF, NEG_INF};
 use crate::squaretables::parse_tables;
 
 #[inline]
@@ -26,9 +26,9 @@ pub fn evaluate(position: &Chess) -> i16 {
         Some(Outcome::Draw) => return 0,
         Some(Outcome::Decisive { winner }) => {
             if winner == Color::White {
-                POSITIVE_INFINITY
+                POS_INF
             } else {
-                NEGATIVE_INFINITY
+                NEG_INF
             }
         }
         None => count_pieces(board) + parse_tables(board),
