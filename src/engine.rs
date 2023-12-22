@@ -9,8 +9,8 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use std::time::SystemTime;
 
-pub const POSITIVE_INFINITY: i16 = i16::MAX - 1_000;
-pub const NEGATIVE_INFINITY: i16 = i16::MIN + 1_000;
+pub const POSITIVE_INFINITY: i16 = i16::MAX - 1;
+pub const NEGATIVE_INFINITY: i16 = i16::MIN + 1;
 
 const NULL_MOVE: Move = Move::Normal {
     role: Role::Pawn,
@@ -63,8 +63,8 @@ impl Engine {
 
         let mut a_window = 40;
         let mut b_window = 40;
-        let mut alpha = evaluation - a_window;
-        let mut beta = evaluation + b_window;
+        let mut alpha = evaluation.saturating_sub(a_window);
+        let mut beta = evaluation.saturating_add(b_window);
 
         let nps = nodes_searched / (start_time.elapsed().unwrap().as_millis() as u64 + 1) * 1000;
 
@@ -108,10 +108,10 @@ impl Engine {
 
             if new_evaluation <= alpha {
                 a_window *= 2;
-                alpha = evaluation - a_window;
+                alpha = evaluation.saturating_sub(a_window);
                 if new_evaluation >= beta {
                     b_window *= 2;
-                    beta = evaluation + b_window;
+                    beta = evaluation.saturating_add(b_window);
                 }
                 continue;
             } else {
