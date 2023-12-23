@@ -458,8 +458,8 @@ fn search(
     let mut best_move = NULL_MOVE;
 
     // main bit
-
-    for m in &moves {
+    
+    for (i, m) in moves.iter().enumerate() {
         // Make move.
         // Move is unmade automatically when `new_position` is dropped.
         let mut new_position = position.clone();
@@ -467,11 +467,16 @@ fn search(
 
         let extension = calculate_extension(m, position, depth_left);
 
+        let lmr_depth = if extension == 0 && !m.is_capture() && i > 3 {
+            (depth_left - 1).clamp(0, 3)
+        } else {
+            depth_left - 1
+        };
         let (evaluation, _, new_searched) = search(
             &new_position,
             -beta,
             -alpha,
-            depth_left + extension - 1,
+            lmr_depth + extension,
             depth_from_root + 1,
             tt,
             killer_moves,
