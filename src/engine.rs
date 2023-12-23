@@ -79,6 +79,7 @@ impl Engine {
         let mut beta = evaluation.saturating_add(b_window);
 
         let nps = nodes_searched / (start_time.elapsed().unwrap().as_millis() as u64 + 1) * 1000;
+        let mut prev_nodes = nodes_searched;
 
         println!("info nodes {0} nps {nps} depth 1", nodes_searched);
         match evaluation {
@@ -151,6 +152,11 @@ impl Engine {
                 }
                 _ => println!("info score cp {}", evaluation),
             }
+
+            let ebf = nodes_searched as f32 / prev_nodes as f32;
+            prev_nodes = nodes_searched;
+
+            println!("info ebf {ebf}");
 
             depth += 1;
         }
