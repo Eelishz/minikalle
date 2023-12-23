@@ -9,8 +9,8 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use std::time::SystemTime;
 
-pub const POS_INF: i16 = i16::MAX - 1_000;
-pub const NEG_INF: i16 = i16::MIN + 1_000;
+pub const POS_INF: i16 = 25_000;
+pub const NEG_INF: i16 = -25_000;
 const INITIAL_WINDOW_SIZE: i16 = 15;
 
 const NULL_MOVE: Move = Move::Normal {
@@ -24,6 +24,7 @@ const NULL_MOVE: Move = Move::Normal {
 pub struct Engine {
     tt: TranspositionTable,
     book: HashMap<u64, Vec<String>>,
+    use_book: bool
 }
 
 impl Engine {
@@ -32,6 +33,7 @@ impl Engine {
         Engine {
             tt: TranspositionTable::new(16),
             book,
+            use_book: true,
         }
     }
 
@@ -39,6 +41,10 @@ impl Engine {
 
     pub fn set_hash(&mut self, value: usize) {
         self.tt = TranspositionTable::new(value);
+    }
+
+    pub fn set_book(&mut self, value: bool) {
+        self.use_book = value;
     }
 
     fn iterative_deepening(
@@ -151,7 +157,7 @@ impl Engine {
         max_depth: u8,
     ) -> (Move, Uci, i16) {
         let zobrist = position.zobrist_hash::<Zobrist64>(shakmaty::EnPassantMode::Legal);
-        if self.book.contains_key(&zobrist.0) {
+        if self.book.contains_key(&zobrist.0) && self.use_book {
             let moves = self.book.get(&zobrist.0).unwrap();
             let move_string = moves.choose(&mut rand::thread_rng()).unwrap();
             let uci = Uci::from_str(move_string).unwrap();
@@ -379,6 +385,7 @@ fn alpha_beta(
     }
 
     let moves = order_moves(&position, &tt, false);
+    
     let mut capture_moves = false;
     for m in &moves {
         if m.is_capture() {

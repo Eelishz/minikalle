@@ -1,10 +1,11 @@
 // UCI Implementation from: https://wbec-ridderkerk.nl/html/UCIProtocol.html
 // Engine also has some UCI output that is not handled through this module
 
+use crate::engine;
 use regex::Regex;
 use shakmaty::{fen::Fen, uci::Uci, Chess, Color, Move, Position};
+use core::panic;
 use std::io::stdin;
-use crate::engine;
 
 #[derive(Debug, PartialEq)]
 enum Token {
@@ -37,7 +38,7 @@ enum Token {
     Number(u64),
     FENStr(String),
     OptionName(String),
-    OptionValue(String)
+    OptionValue(String),
 }
 
 pub struct UciProtocol {
@@ -57,7 +58,9 @@ impl UciProtocol {
 
     pub fn demo(&mut self) {
         for _ in 0..50 {
-            let (m, uci, _) = self.chess_engine.find_best_move(&self.position.clone(), 10_000, 6);
+            let (m, uci, _) = self
+                .chess_engine
+                .find_best_move(&self.position.clone(), 10_000, 6);
             self.position = self.position.clone().play(&m).unwrap();
             println!("bestmove {}", uci);
         }
@@ -75,6 +78,7 @@ impl UciProtocol {
                     println!("id name minikalle");
                     println!("id author Eelis Holmstén");
                     println!("option name Hash type spin default 16 min 1 max 33554432");
+                    println!("option name Book type check default true");
                     println!("uciok");
                 }
                 Token::IsReady => println!("readyok"),
@@ -164,12 +168,33 @@ impl UciProtocol {
     fn stop_search(&mut self) {}
 
     fn set_option(&mut self, tokens: &Vec<Token>) {
-        // TODO: de-jank, add more options
-        let value: usize = match tokens.last().unwrap() {
-            Token::OptionValue(x) => x.parse().unwrap(),
-            _ => panic!(),
-        };
-        self.chess_engine.set_hash(value);
+        // TODO: de-jank, add more options.
+        // Should probably use a map or something.
+
+        match tokens.iter().nth(1).unwrap() {
+            Token::OptionName(x) => match x.as_str() {
+                "Hash" => {
+                    let value: usize = match tokens.last().unwrap() {
+                        Token::OptionValue(x) => x.parse().unwrap(),
+                        _ => panic!(),
+                    };
+                    self.chess_engine.set_hash(value);
+                }
+                "Book" => {
+                    let value: bool = match tokens.last().unwrap() {
+                        Token::OptionValue(x) => match x.as_str() {
+                            "true" => true,
+                            "false" => false,
+                            _ => true,
+                        },
+                        _ => true,
+                    };
+                    self.chess_engine.set_book(value);
+                }
+                _ => eprintln!("unkown option {x:?}")
+            },
+            _ => eprintln!("parser error {tokens:?}")
+        }
     }
 
     fn parse_message(&mut self, message: &String) {
@@ -180,7 +205,9 @@ impl UciProtocol {
         let mut is_fen = false;
 
         loop {
-            let Some(symbol) = split_message.next() else {break;};
+            let Some(symbol) = split_message.next() else {
+                break;
+            };
             match symbol {
                 "uci" => tokens.push(Token::UCI),
                 "isready" => tokens.push(Token::IsReady),
@@ -215,7 +242,9 @@ impl UciProtocol {
                     assert_eq!(split_message.next().unwrap(), "name");
                     tokens.push(Token::OptionName(split_message.next().unwrap().to_string()));
                     assert_eq!(split_message.next().unwrap(), "value");
-                    tokens.push(Token::OptionValue(split_message.next().unwrap().to_string()));
+                    tokens.push(Token::OptionValue(
+                        split_message.next().unwrap().to_string(),
+                    ));
                 }
                 _ => {
                     if is_fen {
