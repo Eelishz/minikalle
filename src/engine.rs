@@ -378,6 +378,24 @@ fn alpha_beta(
         return Some((evaluation, nodes_searched));
     }
 
+    let moves = order_moves(&position, &tt, false);
+    let mut capture_moves = false;
+    for m in &moves {
+        if m.is_capture() {
+            capture_moves = true;
+            break;
+        }
+    }
+
+    if !position.is_check() && !capture_moves && depth_left <= 2 {
+        let futility_margin = 200;
+        let evaluation = evaluate(position);
+
+        if evaluation + futility_margin <= alpha {
+            return Some((alpha, nodes_searched));
+        }
+    }
+
     let null_move_possible = !position.is_check();
 
     if null_move_possible && depth_left >= 3 {
@@ -404,8 +422,6 @@ fn alpha_beta(
             return Some((beta, nodes_searched));
         }
     }
-
-    let moves = order_moves(&position, &tt, false);
 
     if moves.len() == 0 {
         return Some((0, nodes_searched));
