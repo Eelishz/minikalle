@@ -12,6 +12,7 @@ use std::time::SystemTime;
 pub const POS_INF: i16 = 25_000;
 pub const NEG_INF: i16 = -25_000;
 const INITIAL_WINDOW_SIZE: i16 = 25;
+const R: u8 = 3;
 
 const NULL_MOVE: Move = Move::Normal {
     role: Role::Pawn,
@@ -79,7 +80,6 @@ impl Engine {
         let mut beta = evaluation.saturating_add(b_window);
 
         let nps = nodes_searched / (start_time.elapsed().unwrap().as_millis() as u64 + 1) * 1000;
-        let mut prev_nodes = nodes_searched;
 
         println!("info nodes {0} nps {nps} depth 1", nodes_searched);
         match evaluation {
@@ -152,11 +152,6 @@ impl Engine {
                 }
                 _ => println!("info score cp {}", evaluation),
             }
-
-            let ebf = nodes_searched as f32 / prev_nodes as f32;
-            prev_nodes = nodes_searched;
-
-            println!("info ebf {ebf}");
 
             depth += 1;
         }
@@ -285,6 +280,7 @@ fn quiescence(
     if stand_pat >= beta {
         return Some((beta, nodes_searched));
     }
+
     if alpha < stand_pat {
         alpha = stand_pat;
     }
@@ -295,7 +291,7 @@ fn quiescence(
         let mut new_position = position.clone();
         new_position.play_unchecked(&m);
 
-        if !m.is_capture() || !m.is_promotion() || !new_position.is_game_over() {
+        if !m.is_capture() || !m.is_promotion() || !new_position.is_checkmate() {
             continue;
         }
 
@@ -433,7 +429,6 @@ fn search(
     let null_move_possible = !position.is_check();
 
     if null_move_possible && depth_left >= 3 {
-        let r = 3;
         let new_position = position.clone();
         let new_position = new_position.swap_turn().unwrap();
 
@@ -441,7 +436,7 @@ fn search(
             &new_position,
             -beta,
             1 - beta,
-            (depth_left as i8 - r - 1).max(0) as u8,
+            (depth_left as i8 - R as i8- 1).max(0) as u8,
             depth_from_root + 1,
             tt,
             killer_moves,
@@ -474,8 +469,13 @@ fn search(
 
         let extension = calculate_extension(m, position, depth_left);
 
-        let lmr_depth = if depth_left < 3 && extension == 0 && !m.is_capture() && i > 2 {
-            (depth_left - 1).clamp(0, 3)
+        let lmr_depth = if depth_left < 3
+            && new_position.is_check()
+            && extension == 0
+            && !m.is_capture()
+            && i > 4
+        {
+            (depth_left - 1).max(1) - 1
         } else {
             depth_left - 1
         };
