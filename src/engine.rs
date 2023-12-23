@@ -57,12 +57,14 @@ impl Engine {
 
         // Initial guess for aspiration window
 
-        let (mut best_move, mut evaluation, mut nodes_searched) = root_search(
+        let (mut evaluation, mut best_move, mut nodes_searched) = search(
             position,
             NEG_INF,
             POS_INF,
             1,
+            0,
             &mut self.tt,
+            0,
             max_time,
             &start_time,
         )
@@ -91,12 +93,14 @@ impl Engine {
         let mut depth: u8 = 2;
 
         while depth < max_depth {
-            let search = root_search(
+            let search = search(
                 position,
                 alpha,
                 beta,
                 depth,
+                0,
                 &mut self.tt,
+                0,
                 max_time,
                 &start_time,
             );
@@ -106,8 +110,8 @@ impl Engine {
 
             match search {
                 Some(s) => {
-                    new_best_move = s.clone().0;
-                    new_evaluation = s.1;
+                    new_evaluation = s.0;
+                    new_best_move = s.clone().1;
                     nodes_searched += s.2;
                 }
                 None => break,
@@ -249,7 +253,7 @@ fn order_moves(position: &Chess, tt: &TranspositionTable, capture_moves: bool) -
     return legal_moves;
 }
 
-fn quiesce(
+fn quiescence(
     position: &Chess,
     mut alpha: i16,
     beta: i16,
@@ -279,7 +283,7 @@ fn quiesce(
     for chess_move in moves {
         let mut new_position = position.clone();
         new_position.play_unchecked(&chess_move);
-        let (evaluation, new_searched) = quiesce(
+        let (evaluation, new_searched) = quiescence(
             &new_position,
             -beta,
             -alpha,
@@ -332,7 +336,7 @@ fn calculate_extension(m: &Move, position: &Chess, depth_left: u8) -> u8 {
     return 0;
 }
 
-fn alpha_beta(
+fn search(
     position: &Chess,
     mut alpha: i16,
     beta: i16,
@@ -342,7 +346,7 @@ fn alpha_beta(
     mut nodes_searched: u64,
     max_time: u64,
     start_time: &SystemTime,
-) -> Option<(i16, u64)> {
+) -> Option<(i16, Move, u64)> {
     if start_time.elapsed().unwrap().as_millis() as u64 >= max_time {
         return None;
     }
@@ -358,11 +362,11 @@ fn alpha_beta(
         let mut new_position = position.clone();
         let chess_move = table_lookup.clone().unwrap().0;
         new_position.play_unchecked(&chess_move);
-        return Some((table_lookup.unwrap().1, nodes_searched));
+        return Some((table_lookup.clone().unwrap().1, table_lookup.unwrap().0, nodes_searched));
     }
 
     if depth_left == 0 {
-        let (evaluation, new_seached) = quiesce(
+        let (evaluation, new_seached) = quiescence(
             position,
             alpha,
             beta,
@@ -381,7 +385,7 @@ fn alpha_beta(
             depth_left,
             EvaluationType::Exact,
         );
-        return Some((evaluation, nodes_searched));
+        return Some((evaluation, NULL_MOVE, nodes_searched));
     }
 
     let moves = order_moves(&position, &tt, false);
@@ -399,7 +403,7 @@ fn alpha_beta(
         let evaluation = evaluate(position);
 
         if evaluation + futility_margin <= alpha {
-            return Some((alpha, nodes_searched));
+            return Some((alpha, NULL_MOVE, nodes_searched));
         }
     }
 
@@ -410,7 +414,7 @@ fn alpha_beta(
         let new_position = position.clone();
         let new_position = new_position.swap_turn().unwrap();
 
-        let (evaluation, new_searched) = alpha_beta(
+        let (evaluation, _, new_searched) = search(
             &new_position,
             -beta,
             1 - beta,
@@ -426,23 +430,27 @@ fn alpha_beta(
         nodes_searched = new_searched;
 
         if evaluation >= beta {
-            return Some((beta, nodes_searched));
+            return Some((beta, NULL_MOVE, nodes_searched));
         }
     }
 
     if moves.len() == 0 {
-        return Some((0, nodes_searched));
+        return Some((evaluate(position), NULL_MOVE, nodes_searched));
     }
 
     let mut best_move = NULL_MOVE;
 
-    for chess_move in moves {
+    // main bit
+
+    for m in &moves {
+        // Make move.
+        // Move is unmade automatically when `new_position` is dropped.
         let mut new_position = position.clone();
-        new_position.play_unchecked(&chess_move);
+        new_position.play_unchecked(m);
 
-        let extension = calculate_extension(&chess_move, position, depth_left);
+        let extension = calculate_extension(m, position, depth_left);
 
-        let (evaluation, new_searched) = alpha_beta(
+        let (evaluation, _, new_searched) = search(
             &new_position,
             -beta,
             -alpha,
@@ -458,82 +466,21 @@ fn alpha_beta(
         if evaluation >= beta {
             tt.insert(
                 zobrist,
-                chess_move.clone(),
+                m.clone(),
                 beta,
                 depth_left,
                 EvaluationType::Beta,
             );
-            return Some((beta, nodes_searched));
+            return Some((beta, m.clone(), nodes_searched));
         }
         if evaluation > alpha {
             alpha = evaluation;
-            best_move = chess_move;
+            best_move = m.clone();
         }
     }
 
-    tt.insert(zobrist, best_move, alpha, depth_left, EvaluationType::Alpha);
-    return Some((alpha, nodes_searched));
-}
-
-pub fn root_search(
-    position: &Chess,
-    mut alpha: i16,
-    beta: i16,
-    depth_left: u8,
-    tt: &mut TranspositionTable,
-    max_time: u64,
-    start_time: &SystemTime,
-) -> Option<(Move, i16, u64)> {
-    let mut nodes_searched = 1;
-    let zobrist = position
-        .zobrist_hash::<Zobrist64>(shakmaty::EnPassantMode::Legal)
-        .0;
-
-    let moves = order_moves(&position, tt, false);
-
-    let mut best_move = moves[0].clone();
-
-    for chess_move in moves {
-        let mut new_position = position.clone();
-        new_position.play_unchecked(&chess_move);
-        let (evaluation, new_searched) = alpha_beta(
-            &new_position,
-            -beta,
-            -alpha,
-            depth_left - 1,
-            1,
-            tt,
-            nodes_searched,
-            max_time,
-            &start_time,
-        )?;
-        nodes_searched = new_searched;
-        let evaluation = -evaluation;
-
-        if evaluation >= beta {
-            tt.insert(
-                zobrist,
-                chess_move.clone(),
-                beta,
-                depth_left,
-                EvaluationType::Beta,
-            );
-            return Some((chess_move, beta, nodes_searched));
-        }
-        if evaluation > alpha {
-            alpha = evaluation;
-            best_move = chess_move;
-        }
-    }
-
-    tt.insert(
-        zobrist,
-        best_move.clone(),
-        alpha,
-        depth_left,
-        EvaluationType::Alpha,
-    );
-    return Some((best_move, alpha, nodes_searched));
+    tt.insert(zobrist, best_move.clone(), alpha, depth_left, EvaluationType::Alpha);
+    return Some((alpha, best_move, nodes_searched));
 }
 
 extern crate test;
@@ -552,7 +499,7 @@ mod tests {
         let mut tt = TranspositionTable::new(64);
 
         // Call your alpha-beta function
-        let (evaluation, _) = alpha_beta(
+        let (evaluation, _, _) = search(
             &position,
             NEG_INF,
             POS_INF,
@@ -576,12 +523,14 @@ mod tests {
         let mut tt = TranspositionTable::new(64);
 
         // Call your alpha-beta function
-        let (_, evaluation, _) = root_search(
+        let (evaluation, _, _) = search(
             &mut position,
             NEG_INF,
             POS_INF,
             3,
+            0,
             &mut tt,
+            0,
             1000,
             &SystemTime::now(),
         )
@@ -679,7 +628,7 @@ mod tests {
         let beta = POS_INF;
 
         b.iter(|| {
-            alpha_beta(
+            search(
                 &position.clone(),
                 alpha,
                 beta,
