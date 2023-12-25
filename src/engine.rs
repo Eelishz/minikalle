@@ -421,10 +421,10 @@ fn search(
     }
 
     if depth_left == 1 {
-        let margin = 100; // TODO: const this
+        let margin = 250; // TODO: const this
         let evaluation = evaluate(position);
 
-        if (evaluation + margin) <= alpha {
+        if (evaluation + margin) <= alpha && !position.is_check() {
             let (evaluation, new_seached) = quiescence(
                 position,
                 alpha,
@@ -496,7 +496,7 @@ fn search(
             && new_position.is_check()
             && extension == 0
             && !m.is_capture()
-            && i > 3
+            && i > 4
         {
             (depth_left - 1).max(1) - 1
         } else {
