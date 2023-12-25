@@ -480,7 +480,7 @@ fn search(
         return Some((evaluate(position), NULL_MOVE, nodes_searched));
     }
 
-    let mut best_move = moves[0].clone();
+    let mut best_move = &moves[0];
 
     // main bit
 
@@ -521,7 +521,7 @@ fn search(
         }
         if evaluation > alpha {
             alpha = evaluation;
-            best_move = m.clone();
+            best_move = m;
         }
     }
 
@@ -532,7 +532,7 @@ fn search(
         depth_left,
         EvaluationType::Alpha,
     );
-    return Some((alpha, best_move, nodes_searched));
+    return Some((alpha, best_move.clone(), nodes_searched));
 }
 
 extern crate test;
