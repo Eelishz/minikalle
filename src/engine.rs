@@ -4,14 +4,14 @@ use crate::transpositiontable::{EvaluationType, TranspositionTable};
 use rand::seq::SliceRandom;
 use shakmaty::zobrist::{Zobrist64, ZobristHash};
 use shakmaty::{uci::Uci, CastlingMode, Chess, Move, Position};
-use shakmaty::{MoveList, Role, Square};
+use shakmaty::{Color, MoveList, Role, Square};
 use std::collections::HashMap;
 use std::str::FromStr;
 use std::time::SystemTime;
 
 pub const POS_INF: i16 = 25_000;
 pub const NEG_INF: i16 = -25_000;
-const INITIAL_WINDOW_SIZE: i16 = 40;
+const INITIAL_WINDOW_SIZE: i16 = 15;
 const R: u8 = 3;
 
 const NULL_MOVE: Move = Move::Normal {
@@ -119,16 +119,18 @@ impl Engine {
             }
 
             if new_evaluation <= alpha {
+                println!("seech fail low");
                 a_window *= 2;
                 alpha -= a_window;
                 continue;
             } else if new_evaluation >= beta {
+                println!("seech fail high");
                 b_window *= 2;
                 beta += b_window;
                 continue;
             } else {
-                a_window = INITIAL_WINDOW_SIZE;
-                b_window = INITIAL_WINDOW_SIZE;
+                // a_window = INITIAL_WINDOW_SIZE;
+                // b_window = INITIAL_WINDOW_SIZE;
                 evaluation = new_evaluation;
                 best_move = new_best_move;
             }
@@ -243,6 +245,25 @@ fn order_moves(position: &Chess, tt: &TranspositionTable, zobrist: u64) -> MoveL
     return legal_moves;
 }
 
+fn is_promoting(position: &Chess) -> bool {
+    let side_to_move = position.turn();
+    let board = position.board();
+    let pawns = board.pawns();
+    let side_pawns = if side_to_move.is_white() {
+        pawns.intersect(board.white())
+    } else {
+        pawns.intersect(board.black())
+    };
+
+    let promotion_mask: u64 = if side_to_move.is_white() {
+        0xff000000000000
+    } else {
+        0xff00
+    };
+
+    (side_pawns & promotion_mask).0 > 0
+}
+
 fn quiescence(
     position: &Chess,
     mut alpha: i16,
@@ -267,6 +288,18 @@ fn quiescence(
 
     if stand_pat >= beta {
         return Some((beta, nodes_searched));
+    }
+
+    // Delta pruning
+
+    let futility_margin = if is_promoting(&position) {
+        975 + 775
+    } else {
+        975
+    };
+
+    if stand_pat < alpha - futility_margin {
+        return Some((alpha, nodes_searched));
     }
 
     if alpha < stand_pat {
@@ -454,7 +487,7 @@ fn search(
             && new_position.is_check()
             && extension == 0
             && !m.is_capture()
-            && i > 4
+            && i > 3
         {
             (depth_left - 1).max(1) - 1
         } else {
