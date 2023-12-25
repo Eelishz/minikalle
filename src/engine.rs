@@ -4,7 +4,7 @@ use crate::transpositiontable::{EvaluationType, TranspositionTable};
 use rand::seq::SliceRandom;
 use shakmaty::zobrist::{Zobrist64, ZobristHash};
 use shakmaty::{uci::Uci, CastlingMode, Chess, Move, Position};
-use shakmaty::{Color, MoveList, Role, Square};
+use shakmaty::{MoveList, Role, Square};
 use std::collections::HashMap;
 use std::str::FromStr;
 use std::time::SystemTime;
@@ -480,7 +480,7 @@ fn search(
         return Some((evaluate(position), NULL_MOVE, nodes_searched));
     }
 
-    let mut best_move = NULL_MOVE;
+    let mut best_move = moves[0].clone();
 
     // main bit
 
