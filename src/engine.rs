@@ -119,12 +119,10 @@ impl Engine {
             }
 
             if new_evaluation <= alpha {
-                println!("seech fail low");
                 a_window *= 2;
                 alpha -= a_window;
                 continue;
             } else if new_evaluation >= beta {
-                println!("seech fail high");
                 b_window *= 2;
                 beta += b_window;
                 continue;
