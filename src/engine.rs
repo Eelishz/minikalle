@@ -11,8 +11,12 @@ use std::time::SystemTime;
 
 pub const POS_INF: i16 = 25_000;
 pub const NEG_INF: i16 = -25_000;
+
 const INITIAL_WINDOW_SIZE: i16 = 15;
 const R: u8 = 3;
+const LMR_CUTOFF: usize = 5;
+const LMR_DEPTH: u8 = 3;
+const FUTILITY_MARGIN: i16 = 150;
 
 const NULL_MOVE: Move = Move::Normal {
     role: Role::Pawn,
@@ -421,10 +425,9 @@ fn search(
     }
 
     if depth_left == 1 {
-        let margin = 250; // TODO: const this
         let evaluation = evaluate(position);
 
-        if (evaluation + margin) <= alpha && !position.is_check() {
+        if (evaluation + FUTILITY_MARGIN) <= alpha && !position.is_check() {
             let (evaluation, new_seached) = quiescence(
                 position,
                 alpha,
@@ -492,11 +495,11 @@ fn search(
 
         let extension = calculate_extension(m, position, depth_left);
 
-        let lmr_depth = if depth_left < 3
+        let lmr_depth = if depth_left < LMR_DEPTH
             && new_position.is_check()
             && extension == 0
             && !m.is_capture()
-            && i > 4
+            && i > LMR_CUTOFF
         {
             (depth_left - 1).max(1) - 1
         } else {
