@@ -83,17 +83,16 @@ impl Engine {
         let nps = nodes_searched / (start_time.elapsed().unwrap().as_millis() as u64 + 1) * 1000;
 
         println!("info nodes {0} nps {nps} depth 1", nodes_searched);
-        match evaluation {
-            POS_INF => {
+        if evaluation == POS_INF || evaluation == NEG_INF {
+            let mate = find_mate(position, 1, &mut self.tt);
+            if mate.1 > 0 {
                 println!("info score mate 1");
-                return (best_move, evaluation);
-            }
-            NEG_INF => {
+            } else {
                 println!("info score mate -1");
-                return (best_move, evaluation);
             }
-            _ => println!("info score cp {}", evaluation),
+            return mate;
         }
+        println!("info score cp {}", evaluation);
 
         let mut depth: u8 = 2;
 
@@ -131,8 +130,8 @@ impl Engine {
                 beta += b_window;
                 continue;
             } else {
-                // a_window = INITIAL_WINDOW_SIZE;
-                // b_window = INITIAL_WINDOW_SIZE;
+                a_window = INITIAL_WINDOW_SIZE;
+                b_window = INITIAL_WINDOW_SIZE;
                 evaluation = new_evaluation;
                 best_move = new_best_move;
             }
@@ -141,17 +140,19 @@ impl Engine {
                 nodes_searched / (start_time.elapsed().unwrap().as_millis() as u64 + 1) * 1000;
 
             println!("info nodes {0} nps {nps} depth {depth}", nodes_searched);
-            match evaluation {
-                POS_INF => {
+            if evaluation == POS_INF || evaluation == NEG_INF {
+                let mate = find_mate(position, depth, &mut self.tt);
+                if mate.1 > 0 {
                     println!("info score mate {depth}");
-                    break;
-                }
-                NEG_INF => {
+                } else {
                     println!("info score mate -{depth}");
-                    break;
                 }
-                _ => println!("info score cp {}", evaluation),
+
+                if mate.0 != NULL_MOVE {
+                    return mate;
+                }
             }
+            println!("info score cp {}", evaluation);
 
             depth += 1;
         }
@@ -187,6 +188,66 @@ impl Default for Engine {
     fn default() -> Engine {
         Engine::new()
     }
+}
+
+fn find_mate(position: &Chess, mut depth: u8, tt: &mut TranspositionTable) -> (Move, i16) {
+    loop {
+        let search = mate_search(position, NEG_INF, POS_INF, depth, 0, tt);
+        if search.1 == POS_INF || search.1 == NEG_INF {
+            return search;
+        }
+        depth += 1;
+    }
+}
+
+fn mate_search(
+    position: &Chess,
+    mut alpha: i16,
+    beta: i16,
+    depth_left: u8,
+    depth_from_root: u8,
+    tt: &mut TranspositionTable,
+) -> (Move, i16) {
+    let zobrist = position
+        .zobrist_hash::<Zobrist64>(shakmaty::EnPassantMode::Legal)
+        .0;
+
+    if depth_left == 0 {
+        return (NULL_MOVE, evaluate(position));
+    }
+
+    let moves = order_moves(position, tt, zobrist);
+
+    if moves.len() == 0 {
+        return (NULL_MOVE, evaluate(position));
+    }
+
+    let mut best_move = &moves[0];
+
+    for m in &moves {
+        let mut new_position = position.clone();
+        new_position.play_unchecked(m);
+
+        let (search_move, evaluation) = mate_search(
+            &new_position,
+            -beta,
+            -alpha,
+            depth_left - 1,
+            depth_from_root + 1,
+            tt,
+        );
+        let evaluation = -evaluation;
+
+        if evaluation >= beta {
+            return (m.clone(), beta);
+        }
+        if evaluation > alpha {
+            best_move = m;
+            alpha = evaluation;
+        }
+    }
+
+    return (best_move.clone(), alpha);
 }
 
 #[inline]
