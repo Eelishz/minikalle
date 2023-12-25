@@ -200,13 +200,9 @@ fn sort_moves(scores: &mut [i16], moves: &mut MoveList) {
 }
 
 #[inline]
-fn order_moves(position: &Chess, tt: &TranspositionTable) -> MoveList {
+fn order_moves(position: &Chess, tt: &TranspositionTable, zobrist: u64) -> MoveList {
     // MVV-LVA (most valuable capture, least valuable attacker)
     // Hash move
-    let zobrist = position
-        .zobrist_hash::<Zobrist64>(shakmaty::EnPassantMode::Legal)
-        .0;
-
     let mut legal_moves = position.legal_moves();
 
     let hash_move = match tt.get(&zobrist) {
@@ -263,6 +259,10 @@ fn quiescence(
 
     nodes_searched += 1;
 
+    let zobrist = position
+        .zobrist_hash::<Zobrist64>(shakmaty::EnPassantMode::Legal)
+        .0;
+
     let stand_pat = evaluate(&position);
 
     if stand_pat >= beta {
@@ -273,7 +273,7 @@ fn quiescence(
         alpha = stand_pat;
     }
 
-    let moves = order_moves(position, tt);
+    let moves = order_moves(position, tt, zobrist);
 
     for m in moves {
         let mut new_position = position.clone();
@@ -389,7 +389,7 @@ fn search(
         return Some((evaluation, NULL_MOVE, nodes_searched));
     }
 
-    let moves = order_moves(&position, &tt);
+    let moves = order_moves(&position, &tt, zobrist);
 
     let mut capture_moves = false;
     for m in &moves {
@@ -620,7 +620,7 @@ mod tests {
         let position = Chess::new();
         let tt = TranspositionTable::new(64);
 
-        let result = order_moves(&position, &tt);
+        let result = order_moves(&position, &tt, 0);
 
         assert_eq!(result.len(), position.legal_moves().len());
     }
