@@ -422,24 +422,35 @@ fn search(
         return Some((evaluation, NULL_MOVE, nodes_searched));
     }
 
-    let moves = order_moves(&position, &tt, zobrist);
-
-    let mut capture_moves = false;
-    for m in &moves {
-        if m.is_capture() {
-            capture_moves = true;
-            break;
-        }
-    }
-
-    if !position.is_check() && !capture_moves && depth_left <= 2 {
-        let futility_margin = 200;
+    if depth_left == 1 {
+        let margin = 100; // TODO: const this
         let evaluation = evaluate(position);
 
-        if evaluation + futility_margin <= alpha {
-            return Some((alpha, NULL_MOVE, nodes_searched));
+        if (evaluation + margin) <= alpha {
+            let (evaluation, new_seached) = quiescence(
+                position,
+                alpha,
+                beta,
+                depth_from_root + 1,
+                tt,
+                nodes_searched,
+                max_time,
+                start_time,
+            )?;
+            nodes_searched = new_seached;
+
+            tt.insert(
+                zobrist,
+                NULL_MOVE,
+                evaluation,
+                depth_left,
+                EvaluationType::Exact,
+            );
+            return Some((evaluation, NULL_MOVE, nodes_searched));
         }
     }
+
+    let moves = order_moves(&position, &tt, zobrist);
 
     let null_move_possible = !position.is_check();
 
