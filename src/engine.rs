@@ -5,13 +5,13 @@ use rand::seq::SliceRandom;
 use shakmaty::zobrist::{Zobrist64, ZobristHash};
 use shakmaty::{uci::Uci, CastlingMode, Chess, Move, Position};
 use shakmaty::{MoveList, Role, Square};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::str::FromStr;
 use std::time::SystemTime;
 
 pub const POS_INF: i16 = 25_000;
 pub const NEG_INF: i16 = -25_000;
-const INITIAL_WINDOW_SIZE: i16 = 25;
+const INITIAL_WINDOW_SIZE: i16 = 40;
 const R: u8 = 3;
 
 const NULL_MOVE: Move = Move::Normal {
@@ -56,8 +56,6 @@ impl Engine {
     ) -> (Move, i16) {
         let start_time = SystemTime::now();
 
-        let mut killer_moves = vec![HashSet::new(); 256];
-
         // Initial guess for aspiration window
 
         let (mut evaluation, mut best_move, mut nodes_searched) = search(
@@ -67,7 +65,6 @@ impl Engine {
             1,
             0,
             &mut self.tt,
-            &mut killer_moves,
             0,
             max_time,
             &start_time,
@@ -104,7 +101,6 @@ impl Engine {
                 depth,
                 0,
                 &mut self.tt,
-                &mut killer_moves,
                 0,
                 max_time,
                 &start_time,
@@ -204,11 +200,7 @@ fn sort_moves(scores: &mut [i16], moves: &mut MoveList) {
 }
 
 #[inline]
-fn order_moves(
-    position: &Chess,
-    tt: &TranspositionTable,
-    killer_moves: &HashSet<Move>,
-) -> MoveList {
+fn order_moves(position: &Chess, tt: &TranspositionTable) -> MoveList {
     // MVV-LVA (most valuable capture, least valuable attacker)
     // Hash move
     let zobrist = position
@@ -227,10 +219,7 @@ fn order_moves(
     for (i, m) in legal_moves.iter().enumerate() {
         if m == &hash_move {
             scores[i] = POS_INF;
-        } else if killer_moves.contains(m) {
-            scores[i] = POS_INF - 1;
-        }
-        if m.is_capture() {
+        } else if m.is_capture() {
             let attacker = match m.role() {
                 Role::Pawn => 100,
                 Role::Knight => 300,
@@ -264,7 +253,6 @@ fn quiescence(
     beta: i16,
     depth_from_root: u8,
     tt: &TranspositionTable,
-    killer_moves: &mut Vec<HashSet<Move>>,
     mut nodes_searched: u64,
     max_time: u64,
     start_time: &SystemTime,
@@ -285,7 +273,7 @@ fn quiescence(
         alpha = stand_pat;
     }
 
-    let moves = order_moves(position, tt, &killer_moves[depth_from_root as usize]);
+    let moves = order_moves(position, tt);
 
     for m in moves {
         let mut new_position = position.clone();
@@ -301,7 +289,6 @@ fn quiescence(
             -alpha,
             depth_from_root,
             tt,
-            killer_moves,
             nodes_searched,
             max_time,
             start_time,
@@ -333,9 +320,6 @@ fn calculate_extension(m: &Move, position: &Chess, depth_left: u8) -> u8 {
     if depth_left >= 3 {
         return 0;
     }
-    if m.is_capture() {
-        return 1;
-    }
     if m.is_promotion() {
         return 1;
     }
@@ -356,7 +340,6 @@ fn search(
     depth_left: u8,
     depth_from_root: u8,
     tt: &mut TranspositionTable,
-    killer_moves: &mut Vec<HashSet<Move>>,
     mut nodes_searched: u64,
     max_time: u64,
     start_time: &SystemTime,
@@ -390,7 +373,6 @@ fn search(
             beta,
             depth_from_root + 1,
             tt,
-            killer_moves,
             nodes_searched,
             max_time,
             start_time,
@@ -407,7 +389,7 @@ fn search(
         return Some((evaluation, NULL_MOVE, nodes_searched));
     }
 
-    let moves = order_moves(&position, &tt, &killer_moves[depth_from_root as usize]);
+    let moves = order_moves(&position, &tt);
 
     let mut capture_moves = false;
     for m in &moves {
@@ -436,10 +418,9 @@ fn search(
             &new_position,
             -beta,
             1 - beta,
-            (depth_left as i8 - R as i8- 1).max(0) as u8,
+            (depth_left as i8 - R as i8 - 1).max(0) as u8,
             depth_from_root + 1,
             tt,
-            killer_moves,
             nodes_searched,
             max_time,
             start_time,
@@ -486,13 +467,11 @@ fn search(
             lmr_depth + extension,
             depth_from_root + 1,
             tt,
-            killer_moves,
             nodes_searched,
             max_time,
             start_time,
         )?;
         nodes_searched = new_searched;
-        killer_moves[depth_from_root as usize].insert(m.clone());
         let evaluation = -evaluation;
         if evaluation >= beta {
             tt.insert(zobrist, m.clone(), beta, depth_left, EvaluationType::Beta);
@@ -537,7 +516,6 @@ mod tests {
             3,
             0,
             &mut tt,
-            &mut vec![HashSet::new(); 256],
             0,
             1000,
             &SystemTime::now(),
@@ -562,7 +540,6 @@ mod tests {
             3,
             0,
             &mut tt,
-            &mut vec![HashSet::new(); 256],
             0,
             1000,
             &SystemTime::now(),
@@ -643,7 +620,7 @@ mod tests {
         let position = Chess::new();
         let tt = TranspositionTable::new(64);
 
-        let result = order_moves(&position, &tt, &HashSet::new());
+        let result = order_moves(&position, &tt);
 
         assert_eq!(result.len(), position.legal_moves().len());
     }
@@ -664,7 +641,6 @@ mod tests {
                 3,
                 0,
                 &mut tt,
-                &mut vec![HashSet::new(); 256],
                 0,
                 1000,
                 &SystemTime::now(),

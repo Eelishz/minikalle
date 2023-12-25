@@ -11,7 +11,7 @@ use std::io::stdin;
 enum Token {
     UCI,
     IsReady,
-    SetOption, //unimplemented
+    SetOption,
     Register,
     UciNewGame,
     Position,
@@ -115,7 +115,6 @@ impl UciProtocol {
         let mut binc: u64 = 1000;
 
         let mut movetime: u64 = 0;
-        let mut infinite = false;
 
         let mut depth: u64 = 40;
 
@@ -129,9 +128,9 @@ impl UciProtocol {
                     Token::BInc => binc = *n,
                     Token::Depth => depth = *n,
                     Token::MoveTime => movetime = *n,
-                    _ => movetime = 99999999,
+                    _ => movetime = 1000,
                 },
-                Token::Infinite => infinite = true,
+                Token::Infinite => movetime = u64::MAX,
                 _ => prev_token = &token,
             }
         }
@@ -145,11 +144,7 @@ impl UciProtocol {
         let chess_move: Move;
         let uci: Uci;
 
-        if infinite {
-            (chess_move, uci, _) =
-                self.chess_engine
-                    .find_best_move(&self.position.clone(), 999999999999, max_depth);
-        } else if movetime != 0 {
+        if movetime != 0 {
             (chess_move, uci, _) =
                 self.chess_engine
                     .find_best_move(&self.position.clone(), movetime, max_depth);
