@@ -228,7 +228,7 @@ fn mate_search(
         let mut new_position = position.clone();
         new_position.play_unchecked(m);
 
-        let (search_move, evaluation) = mate_search(
+        let (_, evaluation) = mate_search(
             &new_position,
             -beta,
             -alpha,
