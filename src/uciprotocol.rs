@@ -116,7 +116,7 @@ impl UciProtocol {
 
         let mut movetime: u64 = 0;
 
-        let mut depth: u64 = 8;
+        let mut depth: u64 = 20;
 
         let mut prev_token = tokens.first().unwrap();
         for token in &tokens[1..] {
