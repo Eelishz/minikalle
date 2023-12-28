@@ -2,19 +2,21 @@
 
 use std::env::args;
 
-mod uciprotocol;
+mod benchmark;
 mod engine;
 mod evaluation;
+mod openings;
 mod squaretables;
 mod transpositiontable;
-mod openings;
+mod uciprotocol;
 
 fn main() {
     let args = args();
-    let mut uci_protocol = uciprotocol::UciProtocol::new();
-    if args.last().unwrap() == "demo" {
-        uci_protocol.demo();
-    } else {
-        uci_protocol.start();
-    }
+    let mut uci = uciprotocol::UciProtocol::new();
+    let mode = args.last().unwrap();
+    match mode.as_str() {
+        "demo" => uci.demo(),
+        "benchmark" => benchmark::benchmark(),
+        _ => uci.start(),
+    };
 }

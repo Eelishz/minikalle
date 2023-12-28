@@ -192,7 +192,7 @@ impl UciProtocol {
         }
     }
 
-    fn parse_message(&mut self, message: &String) {
+    fn parse_message(&mut self, message: &String) -> Vec<Token> {
         let mut split_message = message.split_whitespace();
 
         let mut tokens = vec![];
@@ -268,7 +268,7 @@ impl UciProtocol {
             eprintln!("unreconized fen string {message}");
         }
 
-        self.excecute_command(&tokens);
+        return tokens;
     }
 
     fn is_fen_string(&mut self, symbol: &str) -> bool {
@@ -285,6 +285,11 @@ impl UciProtocol {
         re_move.is_match(symbol)
     }
 
+    pub fn put(&mut self, message: &String) {
+        let tokens = self.parse_message(message);
+        self.excecute_command(&tokens);
+    }
+
     pub fn start(&mut self) {
         println!("minikalle by Eelis Holmstén");
         let mut message = String::new();
@@ -296,7 +301,8 @@ impl UciProtocol {
                 .expect("Did not enter a correct string");
             message = message.trim().to_string();
 
-            self.parse_message(&message);
+            let tokens = self.parse_message(&message);
+            self.excecute_command(&tokens);
         }
     }
 }

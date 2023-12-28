@@ -96,7 +96,7 @@ impl Engine {
 
         let mut depth: u8 = 2;
 
-        while depth < max_depth {
+        while depth <= max_depth {
             let search = search(
                 position,
                 alpha,
@@ -729,28 +729,5 @@ mod tests {
         let result = order_moves(&position, &tt, 0);
 
         assert_eq!(result.len(), position.legal_moves().len());
-    }
-
-    #[bench]
-    fn bench_search(b: &mut Bencher) {
-        let position = Chess::new();
-        let mut tt = TranspositionTable::new(64);
-
-        let alpha = NEG_INF;
-        let beta = POS_INF;
-
-        b.iter(|| {
-            search(
-                &position.clone(),
-                alpha,
-                beta,
-                3,
-                0,
-                &mut tt,
-                0,
-                1000,
-                &SystemTime::now(),
-            )
-        })
     }
 }
