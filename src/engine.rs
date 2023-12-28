@@ -14,9 +14,9 @@ pub const NEG_INF: i16 = -25_000;
 
 const INITIAL_WINDOW_SIZE: i16 = 15;
 const R: u8 = 3;
-const LMR_CUTOFF: usize = 5;
-const LMR_DEPTH: u8 = 3;
-const FUTILITY_MARGIN: i16 = 150;
+const LMR_CUTOFF: usize = 0;
+const LMR_DEPTH: u8 = 2;
+const FUTILITY_MARGIN: i16 = 100;
 
 const NULL_MOVE: Move = Move::Normal {
     role: Role::Pawn,
