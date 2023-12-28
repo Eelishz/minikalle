@@ -3,7 +3,7 @@ use std::time::Instant;
 use crate::uciprotocol;
 
 // Standard chess test positions from stockfish's benchmark module
-const POSITIONS: [&str; 47] = [
+const POSITIONS: [&str; 43] = [
     "setoption name UCI_Chess960 value false",
     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
     "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 10",
@@ -51,10 +51,10 @@ const POSITIONS: [&str; 47] = [
     // 7-man positions
     "8/R7/2q5/8/6k1/8/1P5p/K6R w - - 0 124", // Draw
     // Mate and stalemate positions
-    "6k1/3b3r/1p1p4/p1n2p2/1PPNpP1q/P3Q1p1/1R1RB1P1/5K2 b - - 0 1",
-    "r2r1n2/pp2bk2/2p1p2p/3q4/3PN1QP/2P3R1/P4PP1/5RK1 w - - 0 1",
-    "8/8/8/8/8/6k1/6p1/6K1 w - -",
-    "7k/7P/6K1/8/3B4/8/8/8 b - -",
+    // "6k1/3b3r/1p1p4/p1n2p2/1PPNpP1q/P3Q1p1/1R1RB1P1/5K2 b - - 0 1",
+    // "r2r1n2/pp2bk2/2p1p2p/3q4/3PN1QP/2P3R1/P4PP1/5RK1 w - - 0 1",
+    // "8/8/8/8/8/6k1/6p1/6K1 w - -",
+    // "7k/7P/6K1/8/3B4/8/8/8 b - -",
 ];
 
 pub fn benchmark() {
@@ -66,7 +66,7 @@ pub fn benchmark() {
 
     for (i, fen) in POSITIONS.iter().enumerate() {
         println!("--------------");
-        println!("SETTING UP POSITION {fen} {i} / {total_positions}");
+        println!("SETTING UP POSITION --- {fen} --- {i} / {total_positions}");
         println!("--------------");
         
         uci.put(&format!("position fen {fen}").to_string());

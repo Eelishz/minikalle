@@ -75,6 +75,11 @@ impl Engine {
         )
         .unwrap();
 
+        // sometimes a depth 1 serach will return a NULL_MOVE
+        if best_move == NULL_MOVE {
+            best_move = position.legal_moves()[0].clone();
+        }
+
         let mut a_window = INITIAL_WINDOW_SIZE;
         let mut b_window = INITIAL_WINDOW_SIZE;
         let mut alpha = evaluation.saturating_sub(a_window);
@@ -485,7 +490,7 @@ fn search(
         return Some((evaluation, NULL_MOVE, nodes_searched));
     }
 
-    if depth_left == 1 {
+    if depth_left == 1 && depth_from_root > 1 {
         let evaluation = evaluate(position);
 
         if (evaluation + FUTILITY_MARGIN) <= alpha && !position.is_check() {
