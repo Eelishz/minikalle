@@ -604,7 +604,6 @@ extern crate test;
 #[cfg(test)]
 mod tests {
     use shakmaty::{fen::Fen, Chess};
-    use test::Bencher;
 
     use super::*;
 

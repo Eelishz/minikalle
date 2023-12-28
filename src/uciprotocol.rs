@@ -2,7 +2,6 @@
 // Engine also has some UCI output that is not handled through this module
 
 use crate::engine;
-use regex::Regex;
 use shakmaty::{fen::Fen, uci::Uci, Chess, Color, Move, Position};
 use core::panic;
 use std::io::stdin;
@@ -272,8 +271,7 @@ impl UciProtocol {
     }
 
     fn is_fen_string(&mut self, symbol: &str) -> bool {
-        let re_fen = Regex::new(r"^((([prnbqkPRNBQK1-8]+)\/){7}([prnbqkPRNBQK1-8]+)\s[wb]\s(K?Q?k?q?|-)\s([a-h][1-8]|\-)\s\d+\s\d+)$").unwrap();
-        re_fen.is_match(symbol)
+        symbol.parse::<Fen>().is_ok()
     }
 
     fn is_number(&mut self, symbol: &str) -> bool {
@@ -281,8 +279,7 @@ impl UciProtocol {
     }
 
     fn is_move(&mut self, symbol: &str) -> bool {
-        let re_move = Regex::new(r"^[a-h][1-8][a-h][1-8][qrbn]?$").unwrap();
-        re_move.is_match(symbol)
+        symbol.parse::<Uci>().is_ok()
     }
 
     pub fn put(&mut self, message: &String) {
