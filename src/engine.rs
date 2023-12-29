@@ -75,11 +75,6 @@ impl Engine {
         )
         .unwrap();
 
-        // sometimes a depth 1 serach will return a NULL_MOVE
-        if best_move == NULL_MOVE {
-            best_move = position.legal_moves()[0].clone();
-        }
-
         let mut a_window = INITIAL_WINDOW_SIZE;
         let mut b_window = INITIAL_WINDOW_SIZE;
         let mut alpha = evaluation.saturating_sub(a_window);
@@ -89,7 +84,7 @@ impl Engine {
 
         println!("info nodes {0} nps {nps} depth 1", nodes_searched);
         if evaluation == POS_INF || evaluation == NEG_INF {
-            let mate = find_mate(position, 1, &mut self.tt);
+            let mate = find_mate(position, &mut self.tt);
             if mate.1 > 0 {
                 println!("info score mate 1");
             } else {
@@ -146,7 +141,7 @@ impl Engine {
 
             println!("info nodes {0} nps {nps} depth {depth}", nodes_searched);
             if evaluation == POS_INF || evaluation == NEG_INF {
-                let mate = find_mate(position, depth, &mut self.tt);
+                let mate = find_mate(position, &mut self.tt);
                 if mate.1 > 0 {
                     println!("info score mate {depth}");
                 } else {
@@ -195,7 +190,8 @@ impl Default for Engine {
     }
 }
 
-fn find_mate(position: &Chess, mut depth: u8, tt: &mut TranspositionTable) -> (Move, i16) {
+fn find_mate(position: &Chess, tt: &mut TranspositionTable) -> (Move, i16) {
+    let mut depth = 1;
     loop {
         let search = mate_search(position, NEG_INF, POS_INF, depth, 0, tt);
         if search.1 == POS_INF || search.1 == NEG_INF {
@@ -244,6 +240,7 @@ fn mate_search(
         let evaluation = -evaluation;
 
         if evaluation >= beta {
+            tt.insert(zobrist, m.clone(), beta, depth_left, EvaluationType::Beta);
             return (m.clone(), beta);
         }
         if evaluation > alpha {
@@ -252,6 +249,7 @@ fn mate_search(
         }
     }
 
+    tt.insert(zobrist, best_move.clone(), alpha, depth_left, EvaluationType::Alpha);
     return (best_move.clone(), alpha);
 }
 
