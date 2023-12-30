@@ -1,10 +1,11 @@
-#![feature(test, slice_swap_unchecked)]
+#![feature(test, slice_swap_unchecked, const_trait_impl)]
 
 use std::env::args;
 
 mod benchmark;
 mod engine;
 mod evaluation;
+mod neural_eval;
 mod openings;
 mod squaretables;
 mod transpositiontable;

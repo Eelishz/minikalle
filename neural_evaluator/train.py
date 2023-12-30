@@ -12,7 +12,7 @@ model = keras.Sequential(
         keras.layers.Dense(512, activation='relu'),
         keras.layers.Dense(256, activation='relu'),
         keras.layers.Dense(32, activation='relu'),
-        keras.layers.Dense(1, activation='sigmoid', name='data_out'),
+        keras.layers.Dense(1, name='data_out'),
     ]
 )
 
