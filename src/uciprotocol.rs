@@ -283,6 +283,7 @@ impl UciProtocol {
     }
 
     pub fn put(&mut self, message: &String) {
+        println!("{message}");
         let tokens = self.parse_message(message);
         self.excecute_command(&tokens);
     }

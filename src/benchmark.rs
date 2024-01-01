@@ -57,23 +57,22 @@ const POSITIONS: [&str; 43] = [
     // "7k/7P/6K1/8/3B4/8/8/8 b - -",
 ];
 
-pub fn benchmark() {
+pub fn benchmark(cmds: String) {
     let mut uci = uciprotocol::UciProtocol::new();
     let timer = Instant::now();
     let total_positions = POSITIONS.len();
 
     uci.put(&"setoption name Book value false".to_string());
 
+    for line in cmds.lines() {
+        uci.put(&line.to_string());
+    }
+
     for (i, fen) in POSITIONS.iter().enumerate() {
-        println!("--------------");
-        println!("SETTING UP POSITION --- {fen} --- {i} / {total_positions}");
-        println!("--------------");
-        
         uci.put(&format!("position fen {fen}").to_string());
         uci.put(&"go movetime 6000000 depth 7".to_string());
         uci.put(&"ucinewgame".to_string());
     }
 
-    println!("--------------");
     println!("TOTAL TIME: {:?}", timer.elapsed());
 }

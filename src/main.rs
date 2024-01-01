@@ -12,12 +12,12 @@ mod transpositiontable;
 mod uciprotocol;
 
 fn main() {
-    let args = args();
+    let mut args = args();
     let mut uci = uciprotocol::UciProtocol::new();
-    let mode = args.last().unwrap();
+    let mode = args.nth(1).unwrap();
     match mode.as_str() {
         "demo" => uci.demo(),
-        "benchmark" => benchmark::benchmark(),
+        "benchmark" => benchmark::benchmark(args.last().unwrap().to_string()),
         _ => uci.start(),
     };
 }
