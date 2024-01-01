@@ -37,11 +37,14 @@ def get_dataset(num_samples=None):
                 continue
             value = values[res]
             board = game.board()
-            for i, move in enumerate(game.mainline_moves()):
+            moves = list(game.mainline_moves())
+            n_moves = len(moves)
+            if n_moves == 0: continue
+            for i, move in enumerate(moves):
                 board.push(move)
                 ser = state(board)
                 X.append(ser)
-                y.append(value)
+                y.append(value * (i / n_moves))
             print(f'parsing game {gn}, got {len(X)} examples')
             if num_samples is not None and len(X) > num_samples:
                 X = np.array(X)
@@ -53,5 +56,5 @@ def get_dataset(num_samples=None):
     return X, y
 
 if __name__ == "__main__":
-    X, y = get_dataset(3_000_000)
-    np.savez('processed/dataset_3M.npz', X, y)
+    X, y = get_dataset(4_000_000)
+    np.savez('processed/dataset_B_4M_t.npz', X, y)

@@ -8,14 +8,18 @@
 
 /.vscode
 
-# CHESS SPECIFIC STUFF
+# DATA
 
 *.zst
 *.pgn
 *.csv
 *.npz
 
-# PYTHON STUFF
+# TENSORFLOW/TENSORBOARD
+
+logs/
+
+# PYTHON
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
