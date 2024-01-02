@@ -33,15 +33,18 @@ del y_a
 del X_b
 del y_b
 
-dense_0_sizes = [0, 128, 64, 32]
-dense_1_sizes = [0, 128, 64, 32, 16]
-dense_2_sizes = [0, 64, 32, 16, 8]
+dense_0_sizes = [64, 32, 16, 8]
+dense_1_sizes = [64, 32, 16, 8]
+dense_2_sizes = [32, 16, 8, 4]
 dropout_freqs = [0.0, 0.5, 0.2]
 
 for dropout_freq in dropout_freqs:
     for dense_2 in dense_2_sizes:
         for dense_1 in dense_1_sizes:
             for dense_0 in dense_0_sizes:
+                if dense_1 > dense_0 or dense_2 > dense_1:
+                    continue
+
                 model_name = f"{dense_0}-{dense_1}-{dense_2}-{dropout_freq}-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
                 log_dir = "logs/fit/" + model_name
                 tensorboard_callback = TensorBoard(log_dir=log_dir, histogram_freq=1)

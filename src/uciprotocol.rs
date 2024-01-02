@@ -6,6 +6,8 @@ use shakmaty::{fen::Fen, uci::Uci, Chess, Color, Move, Position};
 use core::panic;
 use std::io::stdin;
 
+const LATENCY_MS: u64 = 100;
+
 #[derive(Debug, PartialEq)]
 enum Token {
     UCI,
@@ -138,7 +140,7 @@ impl UciProtocol {
         let max_time = match turn {
             Color::White => wtime / 20 + winc,
             Color::Black => btime / 20 + binc,
-        };
+        } - LATENCY_MS;
 
         let chess_move: Move;
         let uci: Uci;
