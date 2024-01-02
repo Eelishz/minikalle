@@ -14,7 +14,7 @@ mod uciprotocol;
 fn main() {
     let mut args = args();
     let mut uci = uciprotocol::UciProtocol::new();
-    let mode = args.nth(1).unwrap();
+    let mode = args.nth(1).unwrap_or("".to_string());
     match mode.as_str() {
         "demo" => uci.demo(),
         "benchmark" => benchmark::benchmark(args.last().unwrap().to_string()),
