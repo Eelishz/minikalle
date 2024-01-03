@@ -37,7 +37,7 @@ impl Engine {
     pub fn new() -> Engine {
         let book = serde_json::from_str(&OPENINGS).unwrap();
         Engine {
-            tt: TranspositionTable::new(16),
+            tt: TranspositionTable::new(64),
             book,
             use_book: true,
         }
