@@ -2,7 +2,8 @@ import tensorflow as tf
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.callbacks import TensorBoard
-import keras
+from tensorflow import keras
+from tensorflow.keras import regularizers 
 import numpy as np
 from datetime import datetime
 
@@ -33,55 +34,67 @@ del y_a
 del X_b
 del y_b
 
-dense_0_sizes = [64, 32, 16, 8]
-dense_1_sizes = [64, 32, 16, 8]
-dense_2_sizes = [32, 16, 8, 4]
-dropout_freqs = [0.0, 0.5, 0.2]
+dense_0_sizes = [4,]
+dense_1_sizes = [4,]
+dense_2_sizes = [0,]
 
-for dropout_freq in dropout_freqs:
-    for dense_2 in dense_2_sizes:
-        for dense_1 in dense_1_sizes:
-            for dense_0 in dense_0_sizes:
-                if dense_1 > dense_0 or dense_2 > dense_1:
-                    continue
+for dense_2 in dense_2_sizes:
+    for dense_1 in dense_1_sizes:
+        for dense_0 in dense_0_sizes:
+            if dense_1 > dense_0 or dense_2 > dense_1:
+                continue
 
-                model_name = f"{dense_0}-{dense_1}-{dense_2}-{dropout_freq}-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
-                log_dir = "logs/fit/" + model_name
-                tensorboard_callback = TensorBoard(log_dir=log_dir, histogram_freq=1)
+            model_name = f"{dense_0}-{dense_1}-{dense_2}-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+            log_dir = "logs/fit/" + model_name
+            tensorboard_callback = TensorBoard(log_dir=log_dir, histogram_freq=1)
 
-                model = keras.Sequential()
+            model = keras.Sequential()
 
-                model.add(keras.layers.Input(shape=(768), name='data_in'))
-                model.add(keras.layers.Dropout(dropout_freq))
-                if dense_0 != 0:
-                    model.add(keras.layers.Dense(dense_0, activation='relu'))
-                    model.add(keras.layers.Dropout(dropout_freq))
-                if dense_1 != 0:
-                    model.add(keras.layers.Dense(dense_1, activation='relu'))
-                    model.add(keras.layers.Dropout(dropout_freq))
-                if dense_2 != 0:
-                    model.add(keras.layers.Dense(dense_2, activation='relu'))
-                    model.add(keras.layers.Dropout(dropout_freq))
-                model.add(keras.layers.Dense(1, name='data_out'))
+            model.add(keras.layers.Input(shape=(768), name='data_in'))
+            if dense_0 != 0:
+                model.add(keras.layers.Dense(
+                    dense_0,
+                    activation='relu',
+                    kernel_regularizer=regularizers.L1L2(l1=1e-5, l2=1e-4),
+                    bias_regularizer=regularizers.L2(1e-4),
+                    activity_regularizer=regularizers.L2(1e-5)
+                ))
+            if dense_1 != 0:
+                model.add(keras.layers.Dense(
+                    dense_1,
+                    activation='relu',
+                    kernel_regularizer=regularizers.L1L2(l1=1e-5, l2=1e-4),
+                    bias_regularizer=regularizers.L2(1e-4),
+                    activity_regularizer=regularizers.L2(1e-5)
+                ))
+            if dense_2 != 0:
+                model.add(keras.layers.Dense(
+                    dense_2,
+                    activation='relu',
+                    kernel_regularizer=regularizers.L1L2(l1=1e-5, l2=1e-4),
+                    bias_regularizer=regularizers.L2(1e-4),
+                    activity_regularizer=regularizers.L2(1e-5)
+                ))
+            model.add(keras.layers.Dense(1, name='data_out'))
 
-                early_stopping = tf.keras.callbacks.EarlyStopping(monitor='loss')
-                tensorboard_callback = TensorBoard(log_dir=log_dir, histogram_freq=1)
+            early_stopping = tf.keras.callbacks.EarlyStopping(monitor='loss')
+            tensorboard_callback = TensorBoard(log_dir=log_dir, histogram_freq=1)
 
-                batch_size = 1024
-                epochs = 10
+            batch_size = 1024
+            epochs = 64
 
-                opt = keras.optimizers.Adam()
-                model.compile(loss='mean_squared_error', optimizer=opt, metrics=['accuracy'])
+            opt = keras.optimizers.Adam()
+            model.compile(loss='mean_squared_error', optimizer=opt, metrics=['accuracy'])
 
-                print(model_name)
-                history = model.fit(X, y, batch_size=batch_size, epochs=epochs, validation_split=0.2, callbacks=[early_stopping, tensorboard_callback])
+            print(model_name)
+            history = model.fit(X, y, batch_size=batch_size, epochs=epochs, validation_split=0.1, callbacks=[early_stopping, tensorboard_callback])
 
-                # Cleanup allocated objects.
-                # Causes a memory leak for some reason if these are not explicitly de-allocated.
-                del model
-                del early_stopping
-                del tensorboard_callback
-                del opt
-                del history
+            model.save("model")
 
-# model.save("model")
+            # Cleanup allocated objects.
+            # Causes a memory leak for some reason if these are not explicitly de-allocated.
+            del model
+            del early_stopping
+            del tensorboard_callback
+            del opt
+            del history
