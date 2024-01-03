@@ -54,6 +54,7 @@ fn feed_forward(input: &[i16; 768]) -> i16 {
 #[inline]
 fn serialize(board: &Board) -> [i16; 768] {
     let mut result = [0; 768];
+    let mut index = 0;
 
     let white = board.white();
     let black = board.black();
@@ -70,10 +71,12 @@ fn serialize(board: &Board) -> [i16; 768] {
             let bb = color.intersect(piece);
 
             for sq in bb {
-                let index = sq as usize;
-                result[index] = SCALE;
+                let sq = sq as usize;
+                result[index + sq] = SCALE;
             }
+            index += 64;
         }
+        index = 0;
     }
 
     return result;

@@ -21,6 +21,13 @@ def state(board):
 
     return arr
 
+def has_captures(board):
+    legal_moves = board.legal_moves
+    for m in legal_moves:
+        if board.is_capture(m):
+            return True
+    return False
+
 def get_dataset(num_samples=None):
     X,y = [], []
     gn = 0
@@ -37,24 +44,27 @@ def get_dataset(num_samples=None):
                 continue
             value = values[res]
             board = game.board()
-            moves = list(game.mainline_moves())
-            n_moves = len(moves)
-            if n_moves == 0: continue
-            for i, move in enumerate(moves):
+            for move in game.mainline_moves():
+                if has_captures(board):
+                    continue
+
                 board.push(move)
                 ser = state(board)
                 X.append(ser)
-                y.append(value * (i / n_moves))
+                y.append(value)
             print(f'parsing game {gn}, got {len(X)} examples')
             if num_samples is not None and len(X) > num_samples:
                 X = np.array(X)
                 y = np.array(y)
                 return X, y
             gn += 1
+
+            del game
+            del board
     X = np.array(X)
     y = np.array(y)
     return X, y
 
 if __name__ == "__main__":
     X, y = get_dataset(4_000_000)
-    np.savez('processed/dataset_B_4M_t.npz', X, y)
+    np.savez('processed/dataset_B_4M_no_cap.npz', X, y)
