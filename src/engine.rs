@@ -1,6 +1,7 @@
 use crate::evaluation::evaluate;
 use crate::openings::OPENINGS;
 use crate::transpositiontable::{EvaluationType, TranspositionTable};
+use crate::neural_eval;
 use rand::seq::SliceRandom;
 use shakmaty::zobrist::{Zobrist64, ZobristHash};
 use shakmaty::{uci::Uci, CastlingMode, Chess, Move, Position};
@@ -42,7 +43,9 @@ impl Engine {
         }
     }
 
-    pub fn new_game(&mut self) {}
+    pub fn new_game(&mut self) {
+        self.tt.clear();
+    }
 
     pub fn set_hash(&mut self, value: usize) {
         self.tt = TranspositionTable::new(value);
@@ -166,6 +169,7 @@ impl Engine {
         max_time: u64,
         max_depth: u8,
     ) -> (Move, Uci, i16) {
+        self.tt.clear();
         let zobrist = position.zobrist_hash::<Zobrist64>(shakmaty::EnPassantMode::Legal);
         if self.book.contains_key(&zobrist.0) && self.use_book {
             let moves = self.book.get(&zobrist.0).unwrap();
@@ -350,7 +354,7 @@ fn quiescence(
         .zobrist_hash::<Zobrist64>(shakmaty::EnPassantMode::Legal)
         .0;
 
-    let stand_pat = evaluate(&position);
+    let stand_pat = evaluate(&position) + neural_eval::predict(&position);
 
     if stand_pat >= beta {
         return Some((beta, nodes_searched));

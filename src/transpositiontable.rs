@@ -53,6 +53,11 @@ impl TranspositionTable {
             count: num_entries as u64,
         }
     }
+    
+    pub fn clear(&mut self) {
+        let len = self.transpositions.len();
+        self.transpositions = vec![Transposition::new(); len];
+    }
 
     #[inline]
     fn index(&self, key: &u64) -> usize {

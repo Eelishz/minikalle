@@ -1,4 +1,4 @@
-#![feature(test, slice_swap_unchecked, const_trait_impl)]
+#![feature(test, slice_swap_unchecked, const_trait_impl, effects)]
 
 use std::env::args;
 
@@ -7,7 +7,6 @@ mod engine;
 mod evaluation;
 mod neural_eval;
 mod openings;
-mod squaretables;
 mod transpositiontable;
 mod uciprotocol;
 
@@ -17,7 +16,7 @@ fn main() {
     let mode = args.nth(1).unwrap_or("".to_string());
     match mode.as_str() {
         "demo" => uci.demo(),
-        "benchmark" => benchmark::benchmark(args.last().unwrap().to_string()),
+        "benchmark" => benchmark::benchmark(args.last().unwrap_or("".to_string()).to_string()),
         _ => uci.start(),
     };
 }

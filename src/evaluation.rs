@@ -1,6 +1,5 @@
 use shakmaty::{Board, Chess, Color, Outcome, Position};
 use crate::engine::{POS_INF, NEG_INF};
-use crate::squaretables::parse_tables;
 
 #[inline]
 fn count_pieces(board: &Board) -> i16 {
@@ -31,7 +30,7 @@ pub fn evaluate(position: &Chess) -> i16 {
                 NEG_INF
             }
         }
-        None => count_pieces(board) + parse_tables(board),
+        None => count_pieces(board),
     };
     match side {
         Color::Black => -evaluation,

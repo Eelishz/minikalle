@@ -22,9 +22,6 @@ y_b = data_b["arr_1"]
 X = np.append(X_a, X_b, axis=0)
 y = np.append(y_a, y_b, axis=0)
 
-# X = X_a
-# y = y_a
-
 # cleanup temp objects
 
 del data_a
@@ -63,15 +60,15 @@ for dense_2 in dense_2_sizes:
                 model.add(keras.layers.Dense(
                     dense_1,
                     activation='relu',
-                    kernel_regularizer=regularizers.L1L2(l1=1e-5, l2=1e-4),
-                    bias_regularizer=regularizers.L2(1e-4),
-                    activity_regularizer=regularizers.L2(1e-5)
+                    kernel_regularizer=regularizers.L1L2(l1=0.01, l2=0.01),
+                    bias_regularizer=regularizers.L2(0.0001),
+                    activity_regularizer=regularizers.L2(0.00001)
                 ))
             if dense_2 != 0:
                 model.add(keras.layers.Dense(
                     dense_2,
                     activation='relu',
-                    kernel_regularizer=regularizers.L1L2(l1=1e-5, l2=1e-4),
+                    kernel_regularizer=regularizers.L1L2(l1=1e-3, l2=1e-3),
                     bias_regularizer=regularizers.L2(1e-4),
                     activity_regularizer=regularizers.L2(1e-5)
                 ))

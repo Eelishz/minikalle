@@ -1,5 +1,7 @@
 import tensorflow as tf
 
+SCALE = 100
+
 model = tf.keras.models.load_model("model")
 
 for layer in model.layers:
@@ -9,12 +11,12 @@ for layer in model.layers:
 
     ws = layer.get_weights()[0].flatten()
     for w in ws:
-        print(f"{int(w*10_000)}, ", end="")
+        print(f"{int(w*SCALE)}, ", end="")
 
     print("\nBIASES")
 
     bs = layer.get_weights()[1].flatten()
     for b in bs:
-        print(f"{int(b*10_000)}, ", end="")
+        print(f"{int(b*SCALE)}, ", end="")
 
     print("\n---")
