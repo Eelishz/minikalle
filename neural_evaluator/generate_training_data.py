@@ -67,4 +67,4 @@ def get_dataset(num_samples=None):
 
 if __name__ == "__main__":
     X, y = get_dataset(4_000_000)
-    np.savez('processed/dataset_B_4M_no_cap.npz', X, y)
+    np.savez('processed/dataset_A_4M_no_cap.npz', X, y)
