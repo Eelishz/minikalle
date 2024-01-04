@@ -31,8 +31,8 @@ del y_a
 del X_b
 del y_b
 
-dense_0_sizes = [32, 16, 8, 4, 0,]
-dense_1_sizes = [32, 16, 8, 4, 0,]
+dense_0_sizes = [8, 4, 0,]
+dense_1_sizes = [0, 4, 2,]
 dense_2_sizes = [0,]
 
 for dense_2 in dense_2_sizes:
