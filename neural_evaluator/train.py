@@ -31,8 +31,8 @@ del y_a
 del X_b
 del y_b
 
-dense_0_sizes = [8, 4, 0,]
-dense_1_sizes = [0, 4, 2,]
+dense_0_sizes = [12,]
+dense_1_sizes = [12,]
 dense_2_sizes = [0,]
 
 for dense_2 in dense_2_sizes:
@@ -52,33 +52,33 @@ for dense_2 in dense_2_sizes:
                 model.add(keras.layers.Dense(
                     dense_0,
                     activation='relu',
-                    # kernel_regularizer=regularizers.L1L2(l1=1e-5, l2=1e-4),
-                    # bias_regularizer=regularizers.L2(1e-4),
-                    # activity_regularizer=regularizers.L2(1e-5)
+                    kernel_regularizer=regularizers.L1L2(l1=1e-7, l2=1e-7),
+                    bias_regularizer=regularizers.L2(1e-7),
+                    activity_regularizer=regularizers.L2(1e-7)
                 ))
             if dense_1 != 0:
                 model.add(keras.layers.Dense(
                     dense_1,
                     activation='relu',
-                    # kernel_regularizer=regularizers.L1L2(l1=0.01, l2=0.01),
-                    # bias_regularizer=regularizers.L2(0.0001),
-                    # activity_regularizer=regularizers.L2(0.00001)
+                    kernel_regularizer=regularizers.L1L2(l1=1e-7, l2=1e-7),
+                    bias_regularizer=regularizers.L2(1e-7),
+                    activity_regularizer=regularizers.L2(1e-7)
                 ))
             if dense_2 != 0:
                 model.add(keras.layers.Dense(
                     dense_2,
                     activation='relu',
-                    # kernel_regularizer=regularizers.L1L2(l1=1e-3, l2=1e-3),
-                    # bias_regularizer=regularizers.L2(1e-4),
-                    # activity_regularizer=regularizers.L2(1e-5)
+                    kernel_regularizer=regularizers.L1L2(l1=1e-7, l2=1e-7),
+                    bias_regularizer=regularizers.L2(1e-7),
+                    activity_regularizer=regularizers.L2(1e-7)
                 ))
-            model.add(keras.layers.Dense(1, name='data_out'))
+            model.add(keras.layers.Dense(1, activation=tf.nn.tanh, name='data_out'))
 
             early_stopping = tf.keras.callbacks.EarlyStopping(monitor='loss')
             tensorboard_callback = TensorBoard(log_dir=log_dir, histogram_freq=1)
 
             batch_size = 1024
-            epochs = 6
+            epochs = 64
 
             opt = keras.optimizers.Adam()
             model.compile(loss='mean_squared_error', optimizer=opt, metrics=['accuracy'])
