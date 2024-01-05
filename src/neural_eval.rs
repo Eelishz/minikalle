@@ -86,7 +86,7 @@ fn serialize(position: &Chess) -> [i16; L0] {
         Color::Black => 0,
         Color::White => 1,
     };
-    result[769] = position.halfmoves() as i16;
+    result[769] = position.fullmoves() as i16;
 
     return result;
 }
