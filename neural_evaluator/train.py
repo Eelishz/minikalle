@@ -7,32 +7,12 @@ from tensorflow.keras import regularizers
 import numpy as np
 from datetime import datetime
 
-# Data generation consumes so much memeory that processed data is generated
-# in two batches and appended together.
-# This is probably not a good solution but it seems to work.
+data = np.load("processed/dataset_3M_no_cap.npz")
+X = data["arr_0"][:1_000_000]
+y = data["arr_1"][:1_000_000]
 
-data_a = np.load("processed/dataset_A_4M_no_cap.npz")
-X_a = data_a["arr_0"]
-y_a = data_a["arr_1"]
-
-data_b = np.load("processed/dataset_B_4M_no_cap.npz")
-X_b = data_b["arr_0"]
-y_b = data_b["arr_1"]
-
-X = np.append(X_a, X_b, axis=0)
-y = np.append(y_a, y_b, axis=0)
-
-# cleanup temp objects
-
-del data_a
-del data_b
-del X_a
-del y_a
-del X_b
-del y_b
-
-dense_0_sizes = [12,]
-dense_1_sizes = [12,]
+dense_0_sizes = [4,]
+dense_1_sizes = [4,]
 dense_2_sizes = [0,]
 
 for dense_2 in dense_2_sizes:
@@ -47,7 +27,7 @@ for dense_2 in dense_2_sizes:
 
             model = keras.Sequential()
 
-            model.add(keras.layers.Input(shape=(768), name='data_in'))
+            model.add(keras.layers.Input(shape=(770), name='data_in'))
             if dense_0 != 0:
                 model.add(keras.layers.Dense(
                     dense_0,
@@ -72,7 +52,7 @@ for dense_2 in dense_2_sizes:
                     bias_regularizer=regularizers.L2(1e-7),
                     activity_regularizer=regularizers.L2(1e-7)
                 ))
-            model.add(keras.layers.Dense(1, activation=tf.nn.tanh, name='data_out'))
+            model.add(keras.layers.Dense(1, name='data_out'))
 
             early_stopping = tf.keras.callbacks.EarlyStopping(monitor='loss')
             tensorboard_callback = TensorBoard(log_dir=log_dir, histogram_freq=1)

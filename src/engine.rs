@@ -354,7 +354,7 @@ fn quiescence(
         .zobrist_hash::<Zobrist64>(shakmaty::EnPassantMode::Legal)
         .0;
 
-    let stand_pat = evaluate(&position) + neural_eval::predict(&position);
+    let stand_pat = (evaluate(&position) + neural_eval::predict(&position)).clamp(NEG_INF, POS_INF);
 
     if stand_pat >= beta {
         return Some((beta, nodes_searched));

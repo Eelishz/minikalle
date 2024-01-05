@@ -1,10 +1,10 @@
-use shakmaty::{Chess, Board, Position};
+use shakmaty::{Chess, Position, Color};
 
 const SCALE: i16 = 64;
 
-const L0: usize = 768;
-const L1: usize = 12;
-const L2: usize = 12;
+const L0: usize = 770;
+const L1: usize = 4;
+const L2: usize = 4;
 
 const W0: [i16; L0*L1] = include!("model/W0.in");
 const W1: [i16; L1*L2] = include!("model/W1.in");
@@ -33,8 +33,7 @@ fn relu(x: i16) -> i16 {
     x.max(0)
 }
 
-#[inline]
-fn feed_forward(input: &[i16; 768]) -> i16 {
+fn feed_forward(input: &[i16; L0]) -> i16 {
     // Layer 0
 
     let mut h0 = [0; L1];
@@ -55,9 +54,10 @@ fn feed_forward(input: &[i16; 768]) -> i16 {
     output
 }
 
-#[inline]
-fn serialize(board: &Board) -> [i16; 768] {
-    let mut result = [0; 768];
+fn serialize(position: &Chess) -> [i16; L0] {
+    let board = position.board();
+
+    let mut result = [0; L0];
     let mut index = 0;
 
     let white = board.white();
@@ -80,13 +80,18 @@ fn serialize(board: &Board) -> [i16; 768] {
             }
             index += 64;
         }
-        index = 0;
     }
+
+    result[768] = match position.turn() {
+        Color::Black => 0,
+        Color::White => 1,
+    };
+    result[769] = position.halfmoves() as i16;
 
     return result;
 }
 
 pub fn predict(position: &Chess) -> i16 {
-    let input = serialize(position.board());
+    let input = serialize(position);
     feed_forward(&input)
 }

@@ -2,6 +2,7 @@ import chess
 import chess.pgn
 import numpy as np
 import os
+from tqdm import tqdm
 
 def state(board):
     arr = []
@@ -19,7 +20,10 @@ def state(board):
     arr.extend(board.pieces(5, 0).tolist())
     arr.extend(board.pieces(6, 0).tolist())
 
-    return arr
+    arr.append(board.turn)
+    arr.append(board.fullmove_number)
+
+    return np.asarray(arr)
 
 def has_captures(board):
     legal_moves = board.legal_moves
@@ -29,9 +33,14 @@ def has_captures(board):
     return False
 
 def get_dataset(num_samples=None):
-    X,y = [], []
+    X = np.zeros((num_samples, 770))
+    y = np.zeros((num_samples))
     gn = 0
+    sn = 0
     values = {'1/2-1/2':0, '0-1':-1, '1-0':1}
+
+    pbar = tqdm(total=num_samples)
+
     # pgn files in the data folder
     for fn in os.listdir('data'):
         pgn = open(os.path.join('data', fn))
@@ -48,23 +57,22 @@ def get_dataset(num_samples=None):
                 if has_captures(board):
                     continue
 
+                if num_samples is not None and sn > num_samples:
+                    return X, y
+
                 board.push(move)
                 ser = state(board)
-                X.append(ser)
-                y.append(value)
-            print(f'parsing game {gn}, got {len(X)} examples')
-            if num_samples is not None and len(X) > num_samples:
-                X = np.array(X)
-                y = np.array(y)
-                return X, y
+                X[gn] = ser
+                y[gn] = value
+                pbar.update(1)
+                sn += 1                
+
             gn += 1
 
             del game
             del board
-    X = np.array(X)
-    y = np.array(y)
     return X, y
 
 if __name__ == "__main__":
-    X, y = get_dataset(4_000_000)
-    np.savez('processed/dataset_A_4M_no_cap.npz', X, y)
+    X, y = get_dataset(3_000_000)
+    np.savez('processed/dataset_3M_no_cap.npz', X, y)
