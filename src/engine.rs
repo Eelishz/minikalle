@@ -671,7 +671,7 @@ mod tests {
 
         let mut position: Chess = fen.into_position(shakmaty::CastlingMode::Standard).unwrap();
 
-        let (_, uci, _) = engine.find_best_move(&mut position, 1_000, 5);
+        let (_, uci, _) = engine.find_best_move(&mut position, 1_000, 4);
 
         assert_eq!(uci.to_string(), "d3d8".to_string());
 
@@ -681,7 +681,7 @@ mod tests {
 
         let mut position: Chess = fen.into_position(shakmaty::CastlingMode::Standard).unwrap();
 
-        let (_, uci, _) = engine.find_best_move(&mut position, 1_000, 5);
+        let (_, uci, _) = engine.find_best_move(&mut position, 1_000, 4);
 
         assert_eq!(uci.to_string(), "e1f1".to_string());
 
@@ -691,7 +691,7 @@ mod tests {
 
         let mut position: Chess = fen.into_position(shakmaty::CastlingMode::Standard).unwrap();
 
-        let (_, uci, _) = engine.find_best_move(&mut position, 1_000, 5);
+        let (_, uci, _) = engine.find_best_move(&mut position, 1_000, 4);
 
         assert_eq!(uci.to_string(), "e6e1".to_string());
 
@@ -701,7 +701,7 @@ mod tests {
 
         let mut position: Chess = fen.into_position(shakmaty::CastlingMode::Standard).unwrap();
 
-        let (_, uci, _) = engine.find_best_move(&mut position, 1_000, 5);
+        let (_, uci, _) = engine.find_best_move(&mut position, 1_000, 4);
 
         assert_eq!(uci.to_string(), "e8e1".to_string());
     }

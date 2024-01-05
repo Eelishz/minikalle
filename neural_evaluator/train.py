@@ -11,9 +11,9 @@ data = np.load("processed/dataset_3M_no_cap.npz")
 X = data["arr_0"][:1_000_000]
 y = data["arr_1"][:1_000_000]
 
-dense_0_sizes = [2,]
-dense_1_sizes = [2,]
-dense_2_sizes = [0,]
+dense_0_sizes = [32,]
+dense_1_sizes = [16,]
+dense_2_sizes = [16,]
 
 for dense_2 in dense_2_sizes:
     for dense_1 in dense_1_sizes:
@@ -22,6 +22,7 @@ for dense_2 in dense_2_sizes:
                 continue
 
             model_name = f"{dense_0}-{dense_1}-{dense_2}-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+
             log_dir = "logs/fit/" + model_name
             tensorboard_callback = TensorBoard(log_dir=log_dir, histogram_freq=1)
 
@@ -32,25 +33,25 @@ for dense_2 in dense_2_sizes:
                 model.add(keras.layers.Dense(
                     dense_0,
                     activation='relu',
-                    kernel_regularizer=regularizers.L1L2(l1=1e-7, l2=1e-7),
-                    bias_regularizer=regularizers.L2(1e-7),
-                    activity_regularizer=regularizers.L2(1e-7)
+                    # kernel_regularizer=regularizers.L1L2(l1=1e-7, l2=1e-7),
+                    # bias_regularizer=regularizers.L2(1e-7),
+                    # activity_regularizer=regularizers.L2(1e-7)
                 ))
             if dense_1 != 0:
                 model.add(keras.layers.Dense(
                     dense_1,
                     activation='relu',
-                    kernel_regularizer=regularizers.L1L2(l1=1e-7, l2=1e-7),
-                    bias_regularizer=regularizers.L2(1e-7),
-                    activity_regularizer=regularizers.L2(1e-7)
+                    # kernel_regularizer=regularizers.L1L2(l1=1e-7, l2=1e-7),
+                    # bias_regularizer=regularizers.L2(1e-7),
+                    # activity_regularizer=regularizers.L2(1e-7)
                 ))
             if dense_2 != 0:
                 model.add(keras.layers.Dense(
                     dense_2,
                     activation='relu',
-                    kernel_regularizer=regularizers.L1L2(l1=1e-7, l2=1e-7),
-                    bias_regularizer=regularizers.L2(1e-7),
-                    activity_regularizer=regularizers.L2(1e-7)
+                    # kernel_regularizer=regularizers.L1L2(l1=1e-7, l2=1e-7),
+                    # bias_regularizer=regularizers.L2(1e-7),
+                    # activity_regularizer=regularizers.L2(1e-7)
                 ))
             model.add(keras.layers.Dense(1, name='data_out'))
 
@@ -58,20 +59,15 @@ for dense_2 in dense_2_sizes:
             tensorboard_callback = TensorBoard(log_dir=log_dir, histogram_freq=1)
 
             batch_size = 1024
-            epochs = 6
+            epochs = 1024
 
             opt = keras.optimizers.Adam()
-            model.compile(loss='mean_squared_error', optimizer=opt, metrics=['accuracy'])
+            model.compile(loss='mean_squared_error', optimizer=opt)
 
             print(model_name)
             history = model.fit(X, y, batch_size=batch_size, epochs=epochs, validation_split=0.1, callbacks=[early_stopping, tensorboard_callback])
 
             model.save("model")
 
-            # Cleanup allocated objects.
-            # Causes a memory leak for some reason if these are not explicitly de-allocated.
-            del model
-            del early_stopping
-            del tensorboard_callback
-            del opt
-            del history
+            keras.backend.clear_session()
+
