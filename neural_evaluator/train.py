@@ -11,8 +11,8 @@ data = np.load("processed/dataset_3M_no_cap.npz")
 X = data["arr_0"][:1_000_000]
 y = data["arr_1"][:1_000_000]
 
-dense_0_sizes = [4,]
-dense_1_sizes = [4,]
+dense_0_sizes = [2,]
+dense_1_sizes = [2,]
 dense_2_sizes = [0,]
 
 for dense_2 in dense_2_sizes:
@@ -58,7 +58,7 @@ for dense_2 in dense_2_sizes:
             tensorboard_callback = TensorBoard(log_dir=log_dir, histogram_freq=1)
 
             batch_size = 1024
-            epochs = 64
+            epochs = 6
 
             opt = keras.optimizers.Adam()
             model.compile(loss='mean_squared_error', optimizer=opt, metrics=['accuracy'])

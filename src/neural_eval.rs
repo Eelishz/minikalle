@@ -93,5 +93,8 @@ fn serialize(position: &Chess) -> [i16; L0] {
 
 pub fn predict(position: &Chess) -> i16 {
     let input = serialize(position);
-    feed_forward(&input)
+    feed_forward(&input) * match position.turn() {
+        Color::White => 1,
+        Color::Black => -1,
+    }
 }
