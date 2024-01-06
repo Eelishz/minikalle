@@ -23,7 +23,7 @@ def state(board):
     arr.append(board.turn)
     arr.append(board.fullmove_number)
 
-    return np.asarray(arr)
+    return np.asarray(arr, dtype=np.int16)
 
 def has_captures(board):
     legal_moves = board.legal_moves
@@ -33,8 +33,8 @@ def has_captures(board):
     return False
 
 def get_dataset(num_samples=None):
-    X = np.zeros((num_samples, 770))
-    y = np.zeros((num_samples))
+    X = np.zeros((num_samples, 770), dtype=np.int16)
+    y = np.zeros((num_samples), dtype=np.int16)
     gn = 0
     sn = 0
     values = {'1/2-1/2':0, '0-1':-1, '1-0':1}
@@ -74,5 +74,5 @@ def get_dataset(num_samples=None):
     return X, y
 
 if __name__ == "__main__":
-    X, y = get_dataset(3_000_000)
-    np.savez('processed/dataset_3M_no_cap.npz', X, y)
+    X, y = get_dataset(5_000_000)
+    np.savez('processed/dataset_5M_no_cap.npz', X, y)

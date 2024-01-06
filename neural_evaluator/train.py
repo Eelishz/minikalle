@@ -8,12 +8,12 @@ import numpy as np
 from datetime import datetime
 
 data = np.load("processed/dataset_3M_no_cap.npz")
-X = data["arr_0"][:1_000_000]
-y = data["arr_1"][:1_000_000]
+X = data["arr_0"]
+y = data["arr_1"]
 
-dense_0_sizes = [32,]
-dense_1_sizes = [16,]
-dense_2_sizes = [16,]
+dense_0_sizes = [8,]
+dense_1_sizes = [4,]
+dense_2_sizes = [0,]
 
 for dense_2 in dense_2_sizes:
     for dense_1 in dense_1_sizes:
