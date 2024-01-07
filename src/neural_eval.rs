@@ -3,9 +3,9 @@ use shakmaty::{Chess, Position, Color};
 const SCALE: i16 = 64;
 
 const L0: usize = 770;
-const L1: usize = 8;
-const L2: usize = 8;
-const L3: usize = 8;
+const L1: usize = 4;
+const L2: usize = 4;
+const L3: usize = 4;
 
 const W0: [i16; L0*L1] = include!("model/W0.in");
 const W1: [i16; L1*L2] = include!("model/W1.in");
