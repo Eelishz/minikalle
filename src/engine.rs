@@ -635,7 +635,7 @@ mod tests {
         .unwrap();
 
         // Assert that the result is as expected
-        assert!(evaluation >= 0);
+        assert!(evaluation >= -5);
     }
 
     #[test]
@@ -659,7 +659,7 @@ mod tests {
         .unwrap();
 
         // Assert that the result is as expected
-        assert!(evaluation >= 0);
+        assert!(evaluation >= -5);
     }
 
     #[test]

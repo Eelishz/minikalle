@@ -7,13 +7,13 @@ from tensorflow.keras import regularizers
 import numpy as np
 from datetime import datetime
 
-data = np.load("processed/dataset_3M_no_cap.npz")
+data = np.load("processed/dataset_5M_no_cap.npz")
 X = data["arr_0"]
 y = data["arr_1"]
 
 dense_0_sizes = [8,]
-dense_1_sizes = [4,]
-dense_2_sizes = [0,]
+dense_1_sizes = [8,]
+dense_2_sizes = [8,]
 
 for dense_2 in dense_2_sizes:
     for dense_1 in dense_1_sizes:
@@ -33,25 +33,25 @@ for dense_2 in dense_2_sizes:
                 model.add(keras.layers.Dense(
                     dense_0,
                     activation='relu',
-                    # kernel_regularizer=regularizers.L1L2(l1=1e-7, l2=1e-7),
-                    # bias_regularizer=regularizers.L2(1e-7),
-                    # activity_regularizer=regularizers.L2(1e-7)
+                    kernel_regularizer=regularizers.L1L2(l1=1e-7, l2=1e-7),
+                    bias_regularizer=regularizers.L2(1e-7),
+                    activity_regularizer=regularizers.L2(1e-7)
                 ))
             if dense_1 != 0:
                 model.add(keras.layers.Dense(
                     dense_1,
                     activation='relu',
-                    # kernel_regularizer=regularizers.L1L2(l1=1e-7, l2=1e-7),
-                    # bias_regularizer=regularizers.L2(1e-7),
-                    # activity_regularizer=regularizers.L2(1e-7)
+                    kernel_regularizer=regularizers.L1L2(l1=1e-7, l2=1e-7),
+                    bias_regularizer=regularizers.L2(1e-7),
+                    activity_regularizer=regularizers.L2(1e-7)
                 ))
             if dense_2 != 0:
                 model.add(keras.layers.Dense(
                     dense_2,
                     activation='relu',
-                    # kernel_regularizer=regularizers.L1L2(l1=1e-7, l2=1e-7),
-                    # bias_regularizer=regularizers.L2(1e-7),
-                    # activity_regularizer=regularizers.L2(1e-7)
+                    kernel_regularizer=regularizers.L1L2(l1=1e-7, l2=1e-7),
+                    bias_regularizer=regularizers.L2(1e-7),
+                    activity_regularizer=regularizers.L2(1e-7)
                 ))
             model.add(keras.layers.Dense(1, name='data_out'))
 

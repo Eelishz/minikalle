@@ -74,5 +74,5 @@ def get_dataset(num_samples=None):
     return X, y
 
 if __name__ == "__main__":
-    X, y = get_dataset(5_000_000)
-    np.savez('processed/dataset_5M_no_cap.npz', X, y)
+    X, y = get_dataset(10_000_000)
+    np.savez('processed/dataset_10M_no_cap.npz', X, y)
