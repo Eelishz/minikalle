@@ -195,7 +195,7 @@ impl Default for Engine {
 }
 
 fn find_mate(position: &Chess, tt: &mut TranspositionTable) -> (Move, i16) {
-    let mut depth = 1;
+    let mut depth = 10;
     loop {
         let search = mate_search(position, NEG_INF, POS_INF, depth, 0, tt);
         if search.1 == POS_INF || search.1 == NEG_INF {

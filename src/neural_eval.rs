@@ -3,7 +3,7 @@ use shakmaty::{Chess, Position, Color};
 const SCALE: i16 = 128;
 
 const L0: usize = 770;
-const L1: usize = 4;
+const L1: usize = 20;
 const L2: usize = 1;
 
 const W0: [i16; L0*L1] = include!("model/W0.in");
@@ -84,5 +84,5 @@ pub fn predict(position: &Chess) -> i16 {
     feed_forward(&input) * match position.turn() {
         Color::White => 1,
         Color::Black => -1,
-    } * 8
+    }
 }

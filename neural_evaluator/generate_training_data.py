@@ -54,15 +54,15 @@ def get_dataset(num_samples=None):
             value = values[res]
             board = game.board()
             for move in game.mainline_moves():
-                if has_captures(board):
-                    continue
+                # if has_captures(board):
+                #     continue
 
                 if num_samples is not None and sn > num_samples:
                     return X, y
 
                 board.push(move)
                 ser = state(board)
-                X[gn] = ser
+                X[gn, :] = ser
                 y[gn] = value
                 pbar.update(1)
                 sn += 1                
@@ -74,5 +74,5 @@ def get_dataset(num_samples=None):
     return X, y
 
 if __name__ == "__main__":
-    X, y = get_dataset(10_000_000)
-    np.savez('processed/dataset_10M_no_cap.npz', X, y)
+    X, y = get_dataset(15_000_000)
+    np.savez('processed/dataset_15M.npz', X, y)

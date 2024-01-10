@@ -1,73 +1,59 @@
-import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense
-from tensorflow.keras.callbacks import TensorBoard
-from tensorflow import keras
-from tensorflow.keras import regularizers 
 import numpy as np
-from datetime import datetime
+import torch
+import torch.nn as nn
+from torch.utils.data import Dataset
+from torch import optim
 
-data = np.load("processed/dataset_10M_no_cap.npz")
-X = data["arr_0"][:6_000_000]
-y = data["arr_1"][:6_000_000]
+class ChessDataset(Dataset):
+    def __init__(self):
+        dat = np.load("processed/dataset_10M.npz")
+        self.X = dat['arr_0']
+        self.Y = dat['arr_1']
+        print("loaded", self.X.shape, self.Y.shape)
 
-dense_0_sizes = [4,]
-dense_1_sizes = [0,]
-dense_2_sizes = [0,]
+    def __len__(self):
+        return self.X.shape[0]
 
-for dense_2 in dense_2_sizes:
-    for dense_1 in dense_1_sizes:
-        for dense_0 in dense_0_sizes:
-            if dense_1 > dense_0 or dense_2 > dense_1:
-                continue
+    def __getitem__(self, idx):
+        return (self.X[idx], self.Y[idx])
 
-            model_name = f"{dense_0}-{dense_1}-{dense_2}-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+class Model(nn.Module):
+    def __init__(self, input_size, hidden_size, output_size):
+        super(Model, self).__init__()
+        self.fc1 = nn.Linear(input_size, hidden_size)
+        self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(p=0.8)
+        self.fc2 = nn.Linear(hidden_size, output_size)
 
-            log_dir = "logs/fit/" + model_name
-            tensorboard_callback = TensorBoard(log_dir=log_dir, histogram_freq=1)
+    def forward(self, x):
+        x = self.dropout(x)
+        x = self.fc1(x)
+        x = self.relu(x)
+        x = self.dropout(x)
+        x = self.fc2(x)
+        return x
+if __name__ == "__main__":
+    torch.set_num_threads(32)
 
-            model = keras.Sequential()
+    chess_dataset = ChessDataset()
+    train_loader = torch.utils.data.DataLoader(chess_dataset, batch_size=2048, shuffle=True)
+    model = Model(770, 20, 1)
+    optimizer = optim.Adam(model.parameters())
+    criterion = nn.MSELoss() 
 
-            model.add(keras.layers.Input(shape=(770), name='data_in'))
-            if dense_0 != 0:
-                model.add(keras.layers.Dense(
-                    dense_0,
-                    activation='relu',
-                    kernel_regularizer=regularizers.L1L2(l1=1e-7, l2=1e-7),
-                    bias_regularizer=regularizers.L2(1e-7),
-                    activity_regularizer=regularizers.L2(1e-7)
-                ))
-            if dense_1 != 0:
-                model.add(keras.layers.Dense(
-                    dense_1,
-                    activation='relu',
-                    kernel_regularizer=regularizers.L1L2(l1=1e-7, l2=1e-7),
-                    bias_regularizer=regularizers.L2(1e-7),
-                    activity_regularizer=regularizers.L2(1e-7)
-                ))
-            if dense_2 != 0:
-                model.add(keras.layers.Dense(
-                    dense_2,
-                    activation='relu',
-                    kernel_regularizer=regularizers.L1L2(l1=1e-7, l2=1e-7),
-                    bias_regularizer=regularizers.L2(1e-7),
-                    activity_regularizer=regularizers.L2(1e-7)
-                ))
-            model.add(keras.layers.Dense(1, name='data_out'))
+    for epoch in range(100):
+        for batch_idx, (data, target) in enumerate(train_loader):
+            target = target.unsqueeze(-1)
+            data = data.float()
+            target = target.float()
 
-            early_stopping = tf.keras.callbacks.EarlyStopping(monitor='loss')
-            tensorboard_callback = TensorBoard(log_dir=log_dir, histogram_freq=1)
+            optimizer.zero_grad()
+            output = model(data)
 
-            batch_size = 1024
-            epochs = 1024
+            loss = criterion(output, target)
+            loss.backward()
+            optimizer.step()
 
-            opt = keras.optimizers.Adam()
-            model.compile(loss='mean_squared_error', optimizer=opt)
+            print(f"Epoch [{epoch+1}/{batch_idx}], Loss: {loss.item():.4f}")
 
-            print(model_name)
-            history = model.fit(X, y, batch_size=batch_size, epochs=epochs, validation_split=0.1, callbacks=[early_stopping, tensorboard_callback])
-
-            model.save("model")
-
-            keras.backend.clear_session()
-
+        torch.save(model.state_dict(), "value.pth")
