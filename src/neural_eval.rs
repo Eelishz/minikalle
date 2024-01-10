@@ -1,21 +1,16 @@
 use shakmaty::{Chess, Position, Color};
 
-const SCALE: i16 = 64;
+const SCALE: i16 = 128;
 
 const L0: usize = 770;
 const L1: usize = 4;
-const L2: usize = 4;
-const L3: usize = 4;
+const L2: usize = 1;
 
 const W0: [i16; L0*L1] = include!("model/W0.in");
-const W1: [i16; L1*L2] = include!("model/W1.in");
-const W2: [i16; L2*L3] = include!("model/W2.in");
-const W3: [i16; L3] = include!("model/W3.in");
+const W1: [i16; L1] = include!("model/W1.in");
 
 const B0: [i16; L1] = include!("model/B0.in");
 const B1: [i16; L2] = include!("model/B1.in");
-const B2: [i16; L3] = include!("model/B2.in");
-const B3: [i16; 1] = include!("model/B3.in");
 
 #[inline]
 fn dot(x: &[i16], y: &[i16]) -> i16 {
@@ -37,29 +32,12 @@ fn relu(x: i16) -> i16 {
 }
 
 fn feed_forward(input: &[i16; L0]) -> i16 {
-    // Layer 0
-
     let mut h0 = [0; L1];
     for i in 0..L1 {
         h0[i] = relu(dot(input, &W0[L0*i..L0*(i+1)]) + B0[i]);
     }
 
-    // Layer 1
-
-    let mut h1 = [0; L2];
-    for i in 0..L2 {
-        h1[i] = relu(dot(&h0, &W1[L1*i..L1*(i+1)]) + B1[i]);
-    }
-
-    // Layer 2
-
-    let mut h2 = [0; L3];
-    for i in 0..L3 {
-        h2[i] = relu(dot(&h1, &W2[L2*i..L2*(i+1)]) + B2[i]);
-    }
-
-    // Output Layer
-    let output = dot(&h2, &W3) + B3[0];
+    let output = dot(&h0, &W1) + B1[0];
 
     output
 }
@@ -106,5 +84,5 @@ pub fn predict(position: &Chess) -> i16 {
     feed_forward(&input) * match position.turn() {
         Color::White => 1,
         Color::Black => -1,
-    }
+    } * 8
 }

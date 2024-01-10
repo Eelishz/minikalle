@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-SCALE = 64
+SCALE = 128
 
 model = tf.keras.models.load_model("model")
 
