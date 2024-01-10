@@ -54,8 +54,8 @@ def get_dataset(num_samples=None):
             value = values[res]
             board = game.board()
             for move in game.mainline_moves():
-                # if has_captures(board):
-                #     continue
+                if has_captures(board):
+                    continue
 
                 if num_samples is not None and sn > num_samples:
                     return X, y
@@ -74,5 +74,5 @@ def get_dataset(num_samples=None):
     return X, y
 
 if __name__ == "__main__":
-    X, y = get_dataset(15_000_000)
-    np.savez('processed/dataset_15M.npz', X, y)
+    X, y = get_dataset(20_000_000)
+    np.savez('processed/dataset_20M.npz', X, y)
