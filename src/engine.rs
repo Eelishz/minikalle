@@ -87,7 +87,7 @@ impl Engine {
 
         println!("info nodes {0} nps {nps} depth 1", nodes_searched);
         if evaluation == POS_INF || evaluation == NEG_INF {
-            let mate = find_mate(position, &mut self.tt);
+            let mate = find_mate(position, &mut self.tt, 1);
             if mate.1 > 0 {
                 println!("info score mate 1");
             } else {
@@ -144,7 +144,7 @@ impl Engine {
 
             println!("info nodes {0} nps {nps} depth {depth}", nodes_searched);
             if evaluation == POS_INF || evaluation == NEG_INF {
-                let mate = find_mate(position, &mut self.tt);
+                let mate = find_mate(position, &mut self.tt, depth);
                 if mate.1 > 0 {
                     println!("info score mate {depth}");
                 } else {
@@ -194,11 +194,11 @@ impl Default for Engine {
     }
 }
 
-fn find_mate(position: &Chess, tt: &mut TranspositionTable) -> (Move, i16) {
-    let mut depth = 10;
+fn find_mate(position: &Chess, tt: &mut TranspositionTable, max_depth: u8) -> (Move, i16) {
+    let mut depth = 0;
     loop {
         let search = mate_search(position, NEG_INF, POS_INF, depth, 0, tt);
-        if search.1 == POS_INF || search.1 == NEG_INF {
+        if search.1 == POS_INF || search.1 == NEG_INF || depth > max_depth {
             return search;
         }
         depth += 1;
