@@ -1,6 +1,6 @@
 from torch import load
 
-SCALE = 64
+SCALE = 32
 
 state = load("value.pth")
 

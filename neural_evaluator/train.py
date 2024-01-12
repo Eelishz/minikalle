@@ -24,18 +24,22 @@ class ChessDataset(Dataset):
 class Model(nn.Module):
     def __init__(self):
         super(Model, self).__init__()
-        self.fc1 = nn.Linear(770, 16)
-        self.fc2 = nn.Linear(16, 16)
-        self.fc3 = nn.Linear(16, 8)
-        self.fc4 = nn.Linear(8, 8)
-        self.fc5 = nn.Linear(8, 1)
+        self.fc1 = nn.Linear(770, 32)
+        self.fc2 = nn.Linear(32, 32)
+        self.fc3 = nn.Linear(32, 16)
+        self.fc4 = nn.Linear(16, 16)
+        self.fc5 = nn.Linear(16, 1)
 
     def forward(self, x):
         x = F.relu(self.fc1(x))
+        
         x = F.relu(self.fc2(x))
+        
         x = F.relu(self.fc3(x))
+        
         x = F.relu(self.fc4(x))
-        x = F.relu(self.fc5(x))
+        
+        x = self.fc5(x)
 
         return x
 
@@ -48,12 +52,12 @@ if __name__ == "__main__":
             chess_dataset, 
             batch_size=1024,
             shuffle=True,
-            num_workers=32)
+            num_workers=8)
     model = Model()
     optimizer = optim.Adam(model.parameters())
-    criterion = nn.MSELoss() 
+    criterion = nn.MSELoss()
 
-    for epoch in range(100):
+    for epoch in range(10_000):
         running_loss = 0.0
         for batch_idx, (data, target) in enumerate(train_loader):
             target = target.unsqueeze(-1)
