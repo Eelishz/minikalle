@@ -6,6 +6,7 @@ import torch.nn.functional as F
 from torch.utils.data import Dataset
 from torch import optim
 import pandas as pd
+from tqdm import tqdm
 
 class ChessDataset(Dataset):
     def __init__(self):
@@ -24,11 +25,11 @@ class ChessDataset(Dataset):
 class Model(nn.Module):
     def __init__(self):
         super(Model, self).__init__()
-        self.fc1 = nn.Linear(770, 32)
-        self.fc2 = nn.Linear(32, 32)
-        self.fc3 = nn.Linear(32, 16)
-        self.fc4 = nn.Linear(16, 16)
-        self.fc5 = nn.Linear(16, 1)
+        self.fc1 = nn.Linear(770, 64)
+        self.fc2 = nn.Linear(64, 64)
+        self.fc3 = nn.Linear(64, 32)
+        self.fc4 = nn.Linear(32, 32)
+        self.fc5 = nn.Linear(32, 1)
 
     def forward(self, x):
         x = F.relu(self.fc1(x))
@@ -58,8 +59,9 @@ if __name__ == "__main__":
     criterion = nn.MSELoss()
 
     for epoch in range(10_000):
-        running_loss = 0.0
-        for batch_idx, (data, target) in enumerate(train_loader):
+        all_loss = 0.0
+        num_loss = 0
+        for batch_idx, (data, target) in tqdm(enumerate(train_loader), total=6e6//1024, ncols=80):
             target = target.unsqueeze(-1)
             data = data.float()
             target = target.float()
@@ -71,9 +73,9 @@ if __name__ == "__main__":
             loss.backward()
             optimizer.step()
 
-            running_loss += loss.item()
-            if batch_idx % 20 == 19:
-                print(f"Epoch [{epoch+1}/{batch_idx+1}], Loss: {running_loss / 20:.4f}")
-                running_loss = 0.0
+            all_loss += loss.item()
+            num_loss += 1
+        
+        print(f"Epoch [{epoch+1}], Loss: {all_loss / num_loss:.4f}")
 
         torch.save(model.state_dict(), "value.pth")
