@@ -1,5 +1,6 @@
 use crate::pgn::PgnIterator;
 use shakmaty::{Chess, Position, Color, san::San};
+use std::env;
 
 mod pgn {
     use std::collections::HashMap;
@@ -132,10 +133,11 @@ fn serialize(position: &Chess) -> [i32; 770] {
 }
 
 fn main() {
-    let pgn = PgnIterator::new("neural_evaluator/data/lichess_db_standard_rated_2016-04.pgn".to_string());
+    let args = env::args();
+    let pgn = PgnIterator::new(args.last());
     // let pgn = PgnIterator::new("lichess_db_standard_rated_2013-01.pgn".to_string());
 
-    let n_max = 30_000_000;
+    let n_max = 100_000_000;
     let mut n = 0;
 
     let mut buf = String::new();

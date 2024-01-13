@@ -42,7 +42,7 @@ class ChessDataset(Dataset):
                 file,
                 header=None,
                 dtype=np.int16,
-                # compression="gzip",
+                compression="gzip",
                 # skiprows=start,
                 # nrows=1,
                 engine="c",
@@ -89,23 +89,23 @@ class Model(nn.Module):
 
 
 if __name__ == "__main__":
-    torch.set_num_threads(4)
+    torch.set_num_threads(32)
 
-    BATCH_SIZE = 10000
+    BATCH_SIZE = 50_000
 
-    chess_dataset = ChessDataset("processed/", 30_000_000, 42470)
+    chess_dataset = ChessDataset("processed/", 70_970_000, 10000)
     train_loader = torch.utils.data.DataLoader(
             chess_dataset, 
             batch_size=BATCH_SIZE,
             shuffle=False,
-            num_workers=4,
+            num_workers=16,
             prefetch_factor=4
     )
     model = Model()
     optimizer = optim.Adam(model.parameters())
     criterion = nn.MSELoss()
 
-    for epoch in range(10_000):
+    for epoch in range(100):
         all_loss = 0.0
         num_loss = 0
         iter = tqdm(
