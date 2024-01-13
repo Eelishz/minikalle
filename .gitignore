@@ -15,6 +15,8 @@
 *.csv
 *.gz
 *.npz
+data/
+processed/
 
 # TENSORFLOW/TENSORBOARD
 

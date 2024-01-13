@@ -132,12 +132,10 @@ fn serialize(position: &Chess) -> [i32; 770] {
 }
 
 fn main() {
-    // TODO: HDF5 support
-
     let pgn = PgnIterator::new("neural_evaluator/data/lichess_db_standard_rated_2016-04.pgn".to_string());
     // let pgn = PgnIterator::new("lichess_db_standard_rated_2013-01.pgn".to_string());
 
-    let n_max = 6_000_000;
+    let n_max = 30_000_000;
     let mut n = 0;
 
     let mut buf = String::new();
@@ -185,8 +183,6 @@ fn main() {
             n += 1;
             
             if n >= n_max {
-                print!("{buf}");
-                buf.clear();
                 break 'outer;
             }
         }
@@ -198,4 +194,6 @@ fn main() {
         //     println!("{} {}", i + 1, n + 1);
         // }
     }
+    print!("{buf}");
+    buf.clear();
 }

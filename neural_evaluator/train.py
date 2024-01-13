@@ -1,5 +1,4 @@
 import numpy as np
-import pandas as pd
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -7,20 +6,64 @@ from torch.utils.data import Dataset
 from torch import optim
 import pandas as pd
 from tqdm import tqdm
+import os
+# from math import floor
 
 class ChessDataset(Dataset):
-    def __init__(self):
-        df = pd.read_csv("../data6M.csv", header=None, dtype=np.int16, engine="c")
-        self.X = df.iloc[:, 1:].to_numpy(dtype=np.int16)
-        self.Y = df.iloc[:, 0].to_numpy(dtype=np.int16)
 
-        print("loaded", self.X.shape, self.Y.shape)
+    def __init__(self, path, total_rows, lines_per_file):
+        self.path = path
+        self.total_rows = total_rows
+        self.files = []
+        self.lines_per_file = lines_per_file
+        self.cache = ["", None]
 
+        for filename in os.listdir(self.path):
+            file_path = os.path.join(self.path, filename)
+
+            if os.path.isfile(file_path):
+                self.files.append(file_path)
+
+    
     def __len__(self):
-        return self.X.shape[0]
+        return self.total_rows
 
     def __getitem__(self, idx):
-        return self.X[idx], self.Y[idx]
+        chunk_idx = idx // self.lines_per_file
+        file = self.files[chunk_idx]
+        start = idx - chunk_idx * self.lines_per_file
+
+        df = None
+
+        if self.cache[0] == file:
+            df = self.cache[1]
+        else:
+            df = pd.read_csv(
+                file,
+                header=None,
+                dtype=np.int16,
+                # compression="gzip",
+                # skiprows=start,
+                # nrows=1,
+                engine="c",
+            )
+            self.cache[0] = file
+            self.cache[1] = df
+
+        # Sometimes the dataframes are 1 shorter than they should be.
+        # This might be an issue with gnu split
+
+        # This means that on occaision a sample will be repeated in on epoch.
+
+        dflen = len(df) - 1
+        if start >= dflen:
+            start = dflen % start
+
+        X = df.to_numpy()[start, 1:]
+        Y = df.to_numpy()[start, 0]
+
+        return X, Y
+
 
 class Model(nn.Module):
     def __init__(self):
@@ -46,14 +89,18 @@ class Model(nn.Module):
 
 
 if __name__ == "__main__":
-    torch.set_num_threads(32)
+    torch.set_num_threads(4)
 
-    chess_dataset = ChessDataset()
+    BATCH_SIZE = 10000
+
+    chess_dataset = ChessDataset("processed/", 30_000_000, 42470)
     train_loader = torch.utils.data.DataLoader(
             chess_dataset, 
-            batch_size=1024,
-            shuffle=True,
-            num_workers=8)
+            batch_size=BATCH_SIZE,
+            shuffle=False,
+            num_workers=4,
+            prefetch_factor=4
+    )
     model = Model()
     optimizer = optim.Adam(model.parameters())
     criterion = nn.MSELoss()
@@ -61,7 +108,12 @@ if __name__ == "__main__":
     for epoch in range(10_000):
         all_loss = 0.0
         num_loss = 0
-        for batch_idx, (data, target) in tqdm(enumerate(train_loader), total=6e6//1024, ncols=80):
+        iter = tqdm(
+            enumerate(train_loader), 
+            total=len(chess_dataset)//BATCH_SIZE,
+            ncols=80
+        )
+        for batch_idx, (data, target) in iter:
             target = target.unsqueeze(-1)
             data = data.float()
             target = target.float()
