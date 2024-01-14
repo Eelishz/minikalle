@@ -7,7 +7,6 @@ from torch import optim
 import pandas as pd
 from tqdm import tqdm
 import os
-# from math import floor
 
 class ChessDataset(Dataset):
 
@@ -91,9 +90,9 @@ class Model(nn.Module):
 if __name__ == "__main__":
     torch.set_num_threads(32)
 
-    BATCH_SIZE = 50_000
+    BATCH_SIZE = 250_000
 
-    chess_dataset = ChessDataset("processed/", 70_970_000, 10000)
+    chess_dataset = ChessDataset("processed/", 100_000_000, 10000)
     train_loader = torch.utils.data.DataLoader(
             chess_dataset, 
             batch_size=BATCH_SIZE,

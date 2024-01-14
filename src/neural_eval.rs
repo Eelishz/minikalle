@@ -1,12 +1,12 @@
 use shakmaty::{Chess, Position, Color};
 
-const SCALE: i16 = 32;
+const SCALE: i16 = 64;
 
 const L0: usize = 770;
-const L1: usize = 32;
-const L2: usize = 32;
-const L3: usize = 16;
-const L4: usize = 16;
+const L1: usize = 64;
+const L2: usize = 64;
+const L3: usize = 32;
+const L4: usize = 32;
 const L5: usize = 1;
 
 const W0: [i16; L0*L1] = include!("model/W0.in");

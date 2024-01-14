@@ -134,7 +134,7 @@ fn serialize(position: &Chess) -> [i32; 770] {
 
 fn main() {
     let args = env::args();
-    let pgn = PgnIterator::new(args.last());
+    let pgn = PgnIterator::new(args.last().unwrap());
     // let pgn = PgnIterator::new("lichess_db_standard_rated_2013-01.pgn".to_string());
 
     let n_max = 100_000_000;
