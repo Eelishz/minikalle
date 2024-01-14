@@ -10,9 +10,8 @@ import os
 
 class ChessDataset(Dataset):
 
-    def __init__(self, path, total_rows, lines_per_file):
+    def __init__(self, path, lines_per_file):
         self.path = path
-        self.total_rows = total_rows
         self.files = []
         self.lines_per_file = lines_per_file
         self.cache = ["", None]
@@ -23,7 +22,8 @@ class ChessDataset(Dataset):
             if os.path.isfile(file_path):
                 self.files.append(file_path)
 
-    
+        self.total_rows = len(self.files) * lines_per_file
+
     def __len__(self):
         return self.total_rows
 
@@ -49,15 +49,6 @@ class ChessDataset(Dataset):
             self.cache[0] = file
             self.cache[1] = df
 
-        # Sometimes the dataframes are 1 shorter than they should be.
-        # This might be an issue with gnu split
-
-        # This means that on occaision a sample will be repeated in on epoch.
-
-        dflen = len(df) - 1
-        if start >= dflen:
-            start = dflen % start
-
         X = df.to_numpy()[start, 1:]
         Y = df.to_numpy()[start, 0]
 
@@ -67,20 +58,24 @@ class ChessDataset(Dataset):
 class Model(nn.Module):
     def __init__(self):
         super(Model, self).__init__()
-        self.fc1 = nn.Linear(770, 64)
-        self.fc2 = nn.Linear(64, 64)
-        self.fc3 = nn.Linear(64, 32)
+        self.fc1 = nn.Linear(770, 512)
+        self.fc2 = nn.Linear(512, 256)
+        self.fc3 = nn.Linear(256, 32)
         self.fc4 = nn.Linear(32, 32)
         self.fc5 = nn.Linear(32, 1)
 
     def forward(self, x):
-        x = F.relu(self.fc1(x))
+        x = self.fc1(x)
+        x = torch.clamp(x, 0, 1)
+
+        x = self.fc2(x)
+        x = torch.clamp(x, 0, 1)
         
-        x = F.relu(self.fc2(x))
+        x = self.fc3(x)
+        x = torch.clamp(x, 0, 1)
         
-        x = F.relu(self.fc3(x))
-        
-        x = F.relu(self.fc4(x))
+        x = self.fc4(x)
+        x = torch.clamp(x, 0, 1)
         
         x = self.fc5(x)
 
@@ -90,9 +85,9 @@ class Model(nn.Module):
 if __name__ == "__main__":
     torch.set_num_threads(32)
 
-    BATCH_SIZE = 250_000
+    BATCH_SIZE = 100_000
 
-    chess_dataset = ChessDataset("processed/", 100_000_000, 10000)
+    chess_dataset = ChessDataset("processed/", 10000)
     train_loader = torch.utils.data.DataLoader(
             chess_dataset, 
             batch_size=BATCH_SIZE,
@@ -107,12 +102,12 @@ if __name__ == "__main__":
     for epoch in range(100):
         all_loss = 0.0
         num_loss = 0
-        iter = tqdm(
+        iterator = tqdm(
             enumerate(train_loader), 
             total=len(chess_dataset)//BATCH_SIZE,
             ncols=80
         )
-        for batch_idx, (data, target) in iter:
+        for batch_idx, (data, target) in iterator:
             target = target.unsqueeze(-1)
             data = data.float()
             target = target.float()

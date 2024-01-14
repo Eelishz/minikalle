@@ -137,7 +137,7 @@ fn main() {
     let pgn = PgnIterator::new(args.last().unwrap());
     // let pgn = PgnIterator::new("lichess_db_standard_rated_2013-01.pgn".to_string());
 
-    let n_max = 100_000_000;
+    let n_max = 250_000_000;
     let mut n = 0;
 
     let mut buf = String::new();
