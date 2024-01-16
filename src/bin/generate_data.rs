@@ -1,5 +1,5 @@
 use crate::pgn::PgnIterator;
-use shakmaty::{Chess, Position, Color, san::San};
+use shakmaty::{Chess, Position, san::San};
 use std::env;
 
 mod pgn {
@@ -95,10 +95,10 @@ mod pgn {
     }
 }
 
-fn serialize(position: &Chess) -> [i32; 770] {
+fn serialize(position: &Chess) -> [i32; 768] {
     let board = position.board();
 
-    let mut result = [0; 770];
+    let mut result = [0; 768];
     let mut index = 0;
 
     let white = board.white();
@@ -123,12 +123,6 @@ fn serialize(position: &Chess) -> [i32; 770] {
         }
     }
 
-    result[768] = match position.turn() {
-        Color::Black => 0,
-        Color::White => 1,
-    };
-    result[769] = u32::from(position.fullmoves()) as i32;
-
     return result;
 }
 
@@ -142,7 +136,7 @@ fn main() {
 
     let mut buf = String::new();
 
-    'outer: for (i, game) in pgn.enumerate() {
+    'outer: for game in pgn {
         let mut board = Chess::default();
         let moves = game.moves;
         let headers = game.headers;
@@ -191,10 +185,6 @@ fn main() {
 
         print!("{buf}");
         buf.clear();
-
-        // if i % 1000 == 999 {
-        //     println!("{} {}", i + 1, n + 1);
-        // }
     }
     print!("{buf}");
     buf.clear();

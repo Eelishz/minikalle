@@ -58,7 +58,7 @@ class ChessDataset(Dataset):
 class Model(nn.Module):
     def __init__(self):
         super(Model, self).__init__()
-        self.fc1 = nn.Linear(770, 512)
+        self.fc1 = nn.Linear(768, 512)
         self.fc2 = nn.Linear(512, 256)
         self.fc3 = nn.Linear(256, 32)
         self.fc4 = nn.Linear(32, 32)
@@ -83,7 +83,7 @@ class Model(nn.Module):
 
 
 if __name__ == "__main__":
-    torch.set_num_threads(32)
+    torch.set_num_threads(4)
 
     BATCH_SIZE = 100_000
 
@@ -92,14 +92,14 @@ if __name__ == "__main__":
             chess_dataset, 
             batch_size=BATCH_SIZE,
             shuffle=False,
-            num_workers=16,
+            num_workers=4,
             prefetch_factor=4
     )
     model = Model()
     optimizer = optim.Adam(model.parameters())
     criterion = nn.MSELoss()
 
-    for epoch in range(100):
+    for epoch in range(1_000):
         all_loss = 0.0
         num_loss = 0
         iterator = tqdm(

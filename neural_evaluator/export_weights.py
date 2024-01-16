@@ -1,6 +1,12 @@
 from torch import load
 
-SCALE = 64
+SCALES = [
+    59,
+    47,
+    52,
+    118,
+    477,
+]
 
 state = load("value.pth")
 
@@ -12,14 +18,14 @@ for key in state:
         with open(f"W{i}.in", "w") as f:
             f.write("[")
             for w in layer.flatten():
-                f.write(f"{int(w*SCALE)},")
+                f.write(f"{int(w*SCALES[i])},")
             f.write("]")
     elif key.endswith("bias"):
         with open(f"B{i}.in", "w") as f:
             f.write("[")
             bs = layer
             for b in bs:
-                f.write(f"{int(b*SCALE)},")
+                f.write(f"{int(b*SCALES[i])},")
             f.write("]")
 
         i += 1
