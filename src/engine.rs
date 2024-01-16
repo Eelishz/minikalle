@@ -356,8 +356,8 @@ fn quiescence(
 
     let mut stand_pat = evaluate(&position);
 
-    if stand_pat == 0 {
-        stand_pat = neural_eval::predict(&position);
+    if stand_pat <= 300 || stand_pat >= -300 {
+        stand_pat += neural_eval::predict(&position);
     }
 
     if stand_pat >= beta {
