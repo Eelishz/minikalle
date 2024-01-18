@@ -1,11 +1,11 @@
 from torch import load
 
 SCALES = [
-    59,
-    47,
-    52,
-    118,
-    477,
+    51,
+    43,
+    41,
+    85,
+    497,
 ]
 
 state = load("value.pth")

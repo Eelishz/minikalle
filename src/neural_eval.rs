@@ -1,11 +1,11 @@
 use shakmaty::{Chess, Position, Color};
 
 const SCALE: [i32; 5] = [
-    59,
-    47,
-    52,
-    118,
-    477,
+    51,
+    43,
+    41,
+    85,
+    497,
 ];
 
 const L0: usize = 768;
@@ -103,7 +103,7 @@ fn serialize(position: &Chess) -> [i32; L0] {
 
             for sq in bb {
                 let sq = sq as usize;
-                result[index + sq] = SCALE[0];
+                result[index + sq] = 100;
             }
             index += 64;
         }
