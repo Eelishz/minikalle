@@ -13,7 +13,7 @@ use std::time::SystemTime;
 pub const POS_INF: i16 = 25_000;
 pub const NEG_INF: i16 = -25_000;
 
-const INITIAL_WINDOW_SIZE: i16 = 25;
+const INITIAL_WINDOW_SIZE: i16 = 15;
 const R: u8 = 3;
 const LMR_CUTOFF: usize = 0;
 const LMR_DEPTH: u8 = 2;

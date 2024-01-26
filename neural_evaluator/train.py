@@ -7,10 +7,12 @@ from torch import optim
 import pandas as pd
 from tqdm import tqdm
 import os
+import io
+from zstandard import ZstdCompressionDict
 
 class ChessDataset(Dataset):
 
-    def __init__(self, path, lines_per_file):
+    def __init__(self, path, lines_per_file, dict_path="zst_dictionary"):
         self.path = path
         self.files = []
         self.lines_per_file = lines_per_file
@@ -23,6 +25,10 @@ class ChessDataset(Dataset):
                 self.files.append(file_path)
 
         self.total_rows = len(self.files) * lines_per_file
+
+        with io.open(dict_path, 'rb') as f:
+            file_content = f.read()
+        self.zd = ZstdCompressionDict(file_content)
 
     def __len__(self):
         return self.total_rows
@@ -41,13 +47,17 @@ class ChessDataset(Dataset):
                 file,
                 header=None,
                 dtype=np.int16,
-                compression="gzip",
+                compression={"method": "zstd", "dict_data": self.zd},
                 # skiprows=start,
                 # nrows=1,
                 engine="c",
             )
             self.cache[0] = file
             self.cache[1] = df
+    
+        dflen = len(df) - 1
+        if start >= dflen:
+            start = dflen % start
 
         X = df.to_numpy()[start, 1:]
         Y = df.to_numpy()[start, 0]
@@ -58,24 +68,24 @@ class ChessDataset(Dataset):
 class Model(nn.Module):
     def __init__(self):
         super(Model, self).__init__()
-        self.fc1 = nn.Linear(768, 512)
-        self.fc2 = nn.Linear(512, 256)
-        self.fc3 = nn.Linear(256, 32)
+        self.fc1 = nn.Linear(768, 256)
+        self.fc2 = nn.Linear(256, 128)
+        self.fc3 = nn.Linear(128, 32)
         self.fc4 = nn.Linear(32, 32)
         self.fc5 = nn.Linear(32, 1)
 
     def forward(self, x):
         x = self.fc1(x)
-        x = torch.clamp(x, 0, 1)
+        x = F.relu(x)
 
         x = self.fc2(x)
-        x = torch.clamp(x, 0, 1)
+        x = F.relu(x)
         
         x = self.fc3(x)
-        x = torch.clamp(x, 0, 1)
+        x = F.relu(x)
         
         x = self.fc4(x)
-        x = torch.clamp(x, 0, 1)
+        x = F.relu(x)
         
         x = self.fc5(x)
 
@@ -83,16 +93,16 @@ class Model(nn.Module):
 
 
 if __name__ == "__main__":
-    torch.set_num_threads(4)
+    torch.set_num_threads(32)
 
     BATCH_SIZE = 100_000
 
-    chess_dataset = ChessDataset("processed/", 10000)
+    chess_dataset = ChessDataset("processed/", 100_000)
     train_loader = torch.utils.data.DataLoader(
             chess_dataset, 
             batch_size=BATCH_SIZE,
             shuffle=False,
-            num_workers=4,
+            num_workers=16,
             prefetch_factor=4
     )
     model = Model()
