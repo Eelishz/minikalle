@@ -1,10 +1,10 @@
 from torch import load
 
 SCALES = [
+    32,
+    32,
     64,
-    128,
-    128,
-    128,
+    64,
     128,
 ]
 

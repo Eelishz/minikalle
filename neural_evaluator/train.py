@@ -8,11 +8,10 @@ import pandas as pd
 from tqdm import tqdm
 import os
 import io
-from zstandard import ZstdCompressionDict
 
 class ChessDataset(Dataset):
 
-    def __init__(self, path, lines_per_file, dict_path="zst_dictionary"):
+    def __init__(self, path, lines_per_file):
         self.path = path
         self.files = []
         self.lines_per_file = lines_per_file
@@ -25,10 +24,6 @@ class ChessDataset(Dataset):
                 self.files.append(file_path)
 
         self.total_rows = len(self.files) * lines_per_file
-
-        with io.open(dict_path, 'rb') as f:
-            file_content = f.read()
-        self.zd = ZstdCompressionDict(file_content)
 
     def __len__(self):
         return self.total_rows
@@ -47,7 +42,6 @@ class ChessDataset(Dataset):
                 file,
                 header=None,
                 dtype=np.int16,
-                compression={"method": "zstd", "dict_data": self.zd},
                 # skiprows=start,
                 # nrows=1,
                 engine="c",
@@ -93,16 +87,16 @@ class Model(nn.Module):
 
 
 if __name__ == "__main__":
-    torch.set_num_threads(32)
+    torch.set_num_threads(4)
 
     BATCH_SIZE = 100_000
 
-    chess_dataset = ChessDataset("processed/", 100_000)
+    chess_dataset = ChessDataset("processed/", 10_000)
     train_loader = torch.utils.data.DataLoader(
             chess_dataset, 
             batch_size=BATCH_SIZE,
             shuffle=False,
-            num_workers=16,
+            num_workers=2,
             prefetch_factor=4
     )
     model = Model()

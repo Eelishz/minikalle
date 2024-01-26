@@ -1,10 +1,10 @@
 use shakmaty::{Chess, Position, Color};
 
 const SCALE: [i16; 5] = [
+    32,
+    32,
     64,
-    128,
-    128,
-    128,
+    64,
     128,
 ];
 
@@ -46,7 +46,7 @@ fn dot(x: &[i16], y: &[i8], scale: i16) -> i16 {
 }
 
 #[inline]
-const fn relu(x: i16) -> i16 {
+fn relu(x: i16) -> i16 {
     x.max(0)
 }
 
