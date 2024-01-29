@@ -100,6 +100,7 @@ if __name__ == "__main__":
             prefetch_factor=4
     )
     model = Model()
+    # model = torch.compile(unopt_model)
     try:
         model.load_state_dict(torch.load("value.pth"))
         print("warm start")
