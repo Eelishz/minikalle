@@ -62,11 +62,11 @@ class ChessDataset(Dataset):
 class Model(nn.Module):
     def __init__(self):
         super(Model, self).__init__()
-        self.fc1 = nn.Linear(768, 256)
-        self.fc2 = nn.Linear(256, 128)
-        self.fc3 = nn.Linear(128, 32)
-        self.fc4 = nn.Linear(32, 32)
-        self.fc5 = nn.Linear(32, 1)
+        self.fc1 = nn.Linear(768, 32)
+        self.fc2 = nn.Linear(32, 16)
+        self.fc3 = nn.Linear(16, 8)
+        self.fc4 = nn.Linear(8, 8)
+        self.fc5 = nn.Linear(8, 1)
 
     def forward(self, x):
         x = self.fc1(x)

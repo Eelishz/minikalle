@@ -2,19 +2,19 @@ use shakmaty::{Chess, Position, Color};
 
 const SCALE: [i16; 5] = [
     32,
-    32,
-    64,
     64,
     128,
+    128,
+    64,
 ];
 
 const FIXED_POINT: i16 = 32;
 
 const L0: usize = 768;
-const L1: usize = 256;
-const L2: usize = 128;
-const L3: usize = 32;
-const L4: usize = 32;
+const L1: usize = 32;
+const L2: usize = 16;
+const L3: usize = 8;
+const L4: usize = 8;
 const L5: usize = 1;
 
 const W0: [i8; L0*L1] = include!("model/W0.in");
