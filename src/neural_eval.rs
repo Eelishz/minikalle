@@ -1,12 +1,6 @@
-use shakmaty::{Chess, Position, Color};
+use shakmaty::{Chess, Color, Position};
 
-const SCALE: [i16; 5] = [
-    32,
-    64,
-    128,
-    128,
-    64,
-];
+const SCALE: [i16; 5] = [32, 64, 128, 128, 64];
 
 const FIXED_POINT: i16 = 32;
 
@@ -17,10 +11,10 @@ const L3: usize = 8;
 const L4: usize = 8;
 const L5: usize = 1;
 
-const W0: [i8; L0*L1] = include!("model/W0.in");
-const W1: [i8; L1*L2] = include!("model/W1.in");
-const W2: [i8; L2*L3] = include!("model/W2.in");
-const W3: [i8; L3*L4] = include!("model/W3.in");
+const W0: [i8; L0 * L1] = include!("model/W0.in");
+const W1: [i8; L1 * L2] = include!("model/W1.in");
+const W2: [i8; L2 * L3] = include!("model/W2.in");
+const W3: [i8; L3 * L4] = include!("model/W3.in");
 const W4: [i8; L4] = include!("model/W4.in");
 
 const B0: [i8; L1] = include!("model/B0.in");
@@ -35,14 +29,9 @@ fn dot(x: &[i16], y: &[i8], scale: i16) -> i16 {
     assert_eq!(x.len(), y.len());
 
     let scale = scale / FIXED_POINT;
-
-    let mut sum = 0;
-
-    for i in 0..x.len() {
-        sum += x[i] * (y[i] as i16 / scale) / FIXED_POINT;
-    }
-
-    sum
+    x.iter().zip(y).fold(0, |acc, (x, y)| {
+        acc + *x * (*y as i16 / scale) / FIXED_POINT
+    })
 }
 
 #[inline]
@@ -56,7 +45,7 @@ fn feed_forward(input: &[i16; L0]) -> i16 {
     let mut h0 = [0; L1];
     for i in 0..L1 {
         let bias = B0[i] as i16 / (SCALE[0] / FIXED_POINT);
-        h0[i] = relu(dot(input, &W0[L0*i..L0*(i+1)], SCALE[0]) + bias);
+        h0[i] = relu(dot(input, &W0[L0 * i..L0 * (i + 1)], SCALE[0]) + bias);
     }
 
     // Layer 1
@@ -64,7 +53,7 @@ fn feed_forward(input: &[i16; L0]) -> i16 {
     let mut h1 = [0; L2];
     for i in 0..L2 {
         let bias = B1[i] as i16 / (SCALE[1] / FIXED_POINT);
-        h1[i] = relu(dot(&h0, &W1[L1*i..L1*(i+1)], SCALE[1]) + bias);
+        h1[i] = relu(dot(&h0, &W1[L1 * i..L1 * (i + 1)], SCALE[1]) + bias);
     }
 
     // Layer 2
@@ -72,7 +61,7 @@ fn feed_forward(input: &[i16; L0]) -> i16 {
     let mut h2 = [0; L3];
     for i in 0..L3 {
         let bias = B2[i] as i16 / (SCALE[2] / FIXED_POINT);
-        h2[i] = relu(dot(&h1, &W2[L2*i..L2*(i+1)], SCALE[2]) + bias);
+        h2[i] = relu(dot(&h1, &W2[L2 * i..L2 * (i + 1)], SCALE[2]) + bias);
     }
 
     // Layer 3
@@ -80,7 +69,7 @@ fn feed_forward(input: &[i16; L0]) -> i16 {
     let mut h3 = [0; L4];
     for i in 0..L4 {
         let bias = B3[i] as i16 / (SCALE[3] / FIXED_POINT);
-        h3[i] = relu(dot(&h2, &W3[L3*i..L3*(i+1)], SCALE[3]) + bias);
+        h3[i] = relu(dot(&h2, &W3[L3 * i..L3 * (i + 1)], SCALE[3]) + bias);
     }
 
     // Output Layer
@@ -123,8 +112,9 @@ fn serialize(position: &Chess) -> [i16; L0] {
 
 pub fn predict(position: &Chess) -> i16 {
     let input = serialize(position);
-    feed_forward(&input) * match position.turn() {
-        Color::White => 1,
-        Color::Black => -1,
-    }
+    feed_forward(&input)
+        * match position.turn() {
+            Color::White => 1,
+            Color::Black => -1,
+        }
 }
