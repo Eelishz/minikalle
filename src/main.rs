@@ -1,4 +1,4 @@
-#![feature(test, slice_swap_unchecked, const_trait_impl, effects)]
+#![feature(test, slice_swap_unchecked, const_trait_impl)]
 
 use std::env::args;
 

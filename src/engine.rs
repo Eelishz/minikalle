@@ -1,7 +1,7 @@
 use crate::evaluation::evaluate;
+use crate::neural_eval;
 use crate::openings::OPENINGS;
 use crate::transpositiontable::{EvaluationType, TranspositionTable};
-use crate::neural_eval;
 use rand::seq::SliceRandom;
 use shakmaty::zobrist::{Zobrist64, ZobristHash};
 use shakmaty::{uci::Uci, CastlingMode, Chess, Move, Position};
@@ -27,10 +27,24 @@ const NULL_MOVE: Move = Move::Normal {
     promotion: None,
 };
 
+struct EngineOpts {
+    pub use_book: bool,
+    pub use_nn: bool,
+}
+
+impl EngineOpts {
+    pub fn new() -> EngineOpts {
+        EngineOpts {
+            use_book: true,
+            use_nn: false,
+        }
+    }
+}
+
 pub struct Engine {
     tt: TranspositionTable,
     book: HashMap<u64, Vec<String>>,
-    use_book: bool,
+    opts: EngineOpts,
 }
 
 impl Engine {
@@ -39,7 +53,7 @@ impl Engine {
         Engine {
             tt: TranspositionTable::new(64),
             book,
-            use_book: true,
+            opts: EngineOpts::new(),
         }
     }
 
@@ -52,7 +66,11 @@ impl Engine {
     }
 
     pub fn set_book(&mut self, value: bool) {
-        self.use_book = value;
+        self.opts.use_book = value;
+    }
+
+    pub fn set_nn(&mut self, value: bool) {
+        self.opts.use_nn = value;
     }
 
     fn iterative_deepening(
@@ -75,6 +93,7 @@ impl Engine {
             0,
             max_time,
             &start_time,
+            &self.opts,
         )
         .unwrap();
 
@@ -110,6 +129,7 @@ impl Engine {
                 0,
                 max_time,
                 &start_time,
+                &self.opts,
             );
 
             let new_evaluation;
@@ -171,7 +191,7 @@ impl Engine {
     ) -> (Move, Uci, i16) {
         self.tt.clear();
         let zobrist = position.zobrist_hash::<Zobrist64>(shakmaty::EnPassantMode::Legal);
-        if self.book.contains_key(&zobrist.0) && self.use_book {
+        if self.book.contains_key(&zobrist.0) && self.opts.use_book {
             let moves = self.book.get(&zobrist.0).unwrap();
             let move_string = moves.choose(&mut rand::thread_rng()).unwrap();
             let uci = Uci::from_str(move_string).unwrap();
@@ -253,7 +273,13 @@ fn mate_search(
         }
     }
 
-    tt.insert(zobrist, best_move.clone(), alpha, depth_left, EvaluationType::Alpha);
+    tt.insert(
+        zobrist,
+        best_move.clone(),
+        alpha,
+        depth_left,
+        EvaluationType::Alpha,
+    );
     return (best_move.clone(), alpha);
 }
 
@@ -343,6 +369,7 @@ fn quiescence(
     mut nodes_searched: u64,
     max_time: u64,
     start_time: &SystemTime,
+    opts: &EngineOpts,
 ) -> Option<(i16, u64)> {
     if start_time.elapsed().unwrap().as_millis() as u64 >= max_time {
         return None;
@@ -356,7 +383,7 @@ fn quiescence(
 
     let mut stand_pat = evaluate(&position);
 
-    if stand_pat <= 300 || stand_pat >= -300 {
+    if opts.use_nn && stand_pat <= 300 || stand_pat >= -300 {
         stand_pat += neural_eval::predict(&position);
     }
 
@@ -399,6 +426,7 @@ fn quiescence(
             nodes_searched,
             max_time,
             start_time,
+            opts,
         )?;
         nodes_searched = new_searched;
         let evaluation = -evaluation;
@@ -450,6 +478,7 @@ fn search(
     mut nodes_searched: u64,
     max_time: u64,
     start_time: &SystemTime,
+    opts: &EngineOpts,
 ) -> Option<(i16, Move, u64)> {
     if start_time.elapsed().unwrap().as_millis() as u64 >= max_time {
         return None;
@@ -483,6 +512,7 @@ fn search(
             nodes_searched,
             max_time,
             start_time,
+            opts,
         )?;
         nodes_searched = new_seached;
 
@@ -509,6 +539,7 @@ fn search(
                 nodes_searched,
                 max_time,
                 start_time,
+                opts,
             )?;
             nodes_searched = new_seached;
 
@@ -541,6 +572,7 @@ fn search(
             nodes_searched,
             max_time,
             start_time,
+            opts,
         )?;
 
         let evaluation = -evaluation;
@@ -587,6 +619,7 @@ fn search(
             nodes_searched,
             max_time,
             start_time,
+            opts,
         )?;
         nodes_searched = new_searched;
         let evaluation = -evaluation;
@@ -635,6 +668,7 @@ mod tests {
             0,
             1000,
             &SystemTime::now(),
+            &EngineOpts::new(),
         )
         .unwrap();
 
@@ -659,6 +693,7 @@ mod tests {
             0,
             1000,
             &SystemTime::now(),
+            &EngineOpts::new(),
         )
         .unwrap();
 

@@ -2,8 +2,8 @@
 // Engine also has some UCI output that is not handled through this module
 
 use crate::engine;
-use shakmaty::{fen::Fen, uci::Uci, Chess, Color, Move, Position};
 use core::panic;
+use shakmaty::{fen::Fen, uci::Uci, Chess, Color, Move, Outcome, Position};
 use std::io::stdin;
 
 const LATENCY_MS: u64 = 100;
@@ -80,15 +80,18 @@ impl UciProtocol {
                     println!("id author Eelis Holmstén");
                     println!("option name Hash type spin default 64 min 1 max 33554432");
                     println!("option name Book type check default true");
+                    println!("option name NN type check default false");
                     println!("uciok");
                 }
                 Token::IsReady => println!("readyok"),
                 Token::UciNewGame => self.new_game(),
                 Token::FENStr(fenstr) => {
                     let fen: Fen = fenstr.parse().unwrap();
-                    let position: Chess =
-                        fen.into_position(shakmaty::CastlingMode::Standard).unwrap();
-                    self.position = position;
+                    if let Ok(position) = fen.into_position(shakmaty::CastlingMode::Standard) {
+                        self.position = position;
+                    } else {
+                        eprintln!("invalid fen");
+                    }
                 }
                 Token::StartPos => {
                     let position = Chess::new();
@@ -96,8 +99,12 @@ impl UciProtocol {
                 }
                 Token::Move(move_string) => {
                     let uci: Uci = move_string.parse().unwrap();
-                    let m = uci.to_move(&self.position).unwrap();
-                    self.position = self.position.clone().play(&m).unwrap();
+
+                    if let Ok(m) = uci.to_move(&self.position) {
+                        self.position = self.position.clone().play(&m).unwrap();
+                    } else {
+                        eprintln!("UCI error");
+                    }
                 }
                 Token::Go => self.handle_go(tokens),
                 Token::Stop => self.stop_search(),
@@ -156,9 +163,18 @@ impl UciProtocol {
         }
 
         self.n_moves += 1;
-        self.position = self.position.clone().play(&chess_move).unwrap();
-
-        println!("bestmove {}", uci);
+        if let Some(outcome) = self.position.outcome() {
+            match outcome {
+                Outcome::Draw => println!("info outcome 1/2-1/2"),
+                Outcome::Decisive { winner } => match winner {
+                    Color::White => println!("info outcome 1-0"),
+                    Color::Black => println!("info outcome 0-1"),
+                },
+            }
+        } else {
+            self.position = self.position.clone().play(&chess_move).unwrap();
+            println!("bestmove {}", uci);
+        }
     }
 
     fn stop_search(&mut self) {}
@@ -187,9 +203,20 @@ impl UciProtocol {
                     };
                     self.chess_engine.set_book(value);
                 }
-                _ => eprintln!("unkown option {x:?}")
+                "NN" => {
+                    let value: bool = match tokens.last().unwrap() {
+                        Token::OptionValue(x) => match x.as_str() {
+                            "true" => true,
+                            "false" => false,
+                            _ => false,
+                        },
+                        _ => false,
+                    };
+                    self.chess_engine.set_nn(value);
+                }
+                _ => eprintln!("unkown option {x:?}"),
             },
-            _ => eprintln!("parser error {tokens:?}")
+            _ => eprintln!("parser error {tokens:?}"),
         }
     }
 
@@ -291,7 +318,7 @@ impl UciProtocol {
     }
 
     pub fn start(&mut self) {
-        println!("minikalle by Eelis Holmstén");
+        eprintln!("minikalle by Eelis Holmstén");
         let mut message = String::new();
 
         while message != "quit" {
