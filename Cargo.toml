@@ -22,9 +22,9 @@ serde_json = "1.0.103"
 rand = "0.8.5"
 
 [profile.release]
-strip = "debuginfo"
 codegen-units = 1
 lto = false
+debug = true
 
 [profile.dev]
 debug = true
