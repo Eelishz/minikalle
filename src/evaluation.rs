@@ -1,5 +1,5 @@
+use crate::search::{NEG_INF, POS_INF};
 use shakmaty::{Board, Chess, Color, Outcome, Position};
-use crate::engine::{POS_INF, NEG_INF};
 
 #[inline]
 fn count_pieces(board: &Board) -> i16 {

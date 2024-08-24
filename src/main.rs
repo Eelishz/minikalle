@@ -3,10 +3,10 @@
 use std::env::args;
 
 mod benchmark;
-mod engine;
 mod evaluation;
 mod neural_eval;
 mod openings;
+mod search;
 mod transpositiontable;
 mod uciprotocol;
 

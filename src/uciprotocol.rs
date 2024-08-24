@@ -1,7 +1,7 @@
 // UCI Implementation from: https://wbec-ridderkerk.nl/html/UCIProtocol.html
 // Engine also has some UCI output that is not handled through this module
 
-use crate::engine;
+use crate::search;
 use core::panic;
 use shakmaty::{fen::Fen, uci::Uci, Chess, Color, Move, Outcome, Position};
 use std::io::stdin;
@@ -43,7 +43,7 @@ enum Token {
 }
 
 pub struct UciProtocol {
-    chess_engine: engine::Engine,
+    chess_engine: search::Engine,
     position: Chess,
     n_moves: u16,
 }
@@ -51,7 +51,7 @@ pub struct UciProtocol {
 impl UciProtocol {
     pub fn new() -> UciProtocol {
         UciProtocol {
-            chess_engine: engine::Engine::new(),
+            chess_engine: search::Engine::new(),
             position: Chess::new(),
             n_moves: 0,
         }
