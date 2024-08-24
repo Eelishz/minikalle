@@ -139,7 +139,7 @@ impl UciProtocol {
                     _ => movetime = 1000,
                 },
                 Token::Infinite => movetime = u64::MAX,
-                _ => prev_token = &token,
+                _ => prev_token = token,
             }
         }
 
@@ -183,7 +183,7 @@ impl UciProtocol {
         // TODO: de-jank, add more options.
         // Should probably use a map or something.
 
-        match tokens.iter().nth(1).unwrap() {
+        match tokens.get(1).unwrap() {
             Token::OptionName(x) => match x.as_str() {
                 "Hash" => {
                     let value: usize = match tokens.last().unwrap() {
@@ -279,14 +279,12 @@ impl UciProtocol {
                             fen_buffer.clear();
                             is_fen = false;
                         }
-                    } else {
-                        if self.is_number(symbol) {
-                            if let Ok(num) = symbol.parse::<u64>() {
-                                tokens.push(Token::Number(num));
-                            }
-                        } else if self.is_move(symbol) {
-                            tokens.push(Token::Move(symbol.to_string()));
+                    } else if self.is_number(symbol) {
+                        if let Ok(num) = symbol.parse::<u64>() {
+                            tokens.push(Token::Number(num));
                         }
+                    } else if self.is_move(symbol) {
+                        tokens.push(Token::Move(symbol.to_string()));
                     }
                 }
             }
@@ -296,7 +294,7 @@ impl UciProtocol {
             eprintln!("unreconized fen string {message}");
         }
 
-        return tokens;
+        tokens
     }
 
     fn is_fen_string(&mut self, symbol: &str) -> bool {

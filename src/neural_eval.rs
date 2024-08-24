@@ -74,9 +74,8 @@ fn feed_forward(input: &[i16; L0]) -> i16 {
 
     // Output Layer
     let bias = B4[0] as i16 / (SCALE[4] / FIXED_POINT);
-    let output = dot(&h3, &W4, SCALE[4]) + bias;
 
-    output
+    dot(&h3, &W4, SCALE[4]) + bias
 }
 
 fn serialize(position: &Chess) -> [i16; L0] {
@@ -107,7 +106,7 @@ fn serialize(position: &Chess) -> [i16; L0] {
         }
     }
 
-    return result;
+    result
 }
 
 pub fn predict(position: &Chess) -> i16 {

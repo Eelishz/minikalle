@@ -49,7 +49,7 @@ pub struct Engine {
 
 impl Engine {
     pub fn new() -> Engine {
-        let book = serde_json::from_str(&OPENINGS).unwrap();
+        let book = serde_json::from_str(OPENINGS).unwrap();
         Engine {
             tt: TranspositionTable::new(64),
             book,
@@ -180,7 +180,7 @@ impl Engine {
             depth += 1;
         }
 
-        return (best_move, evaluation);
+        (best_move, evaluation)
     }
 
     pub fn find_best_move(
@@ -243,7 +243,7 @@ fn mate_search(
 
     let moves = order_moves(position, tt, zobrist);
 
-    if moves.len() == 0 {
+    if moves.is_empty() {
         return (NULL_MOVE, evaluate(position));
     }
 
@@ -280,7 +280,7 @@ fn mate_search(
         depth_left,
         EvaluationType::Alpha,
     );
-    return (best_move.clone(), alpha);
+    (best_move.clone(), alpha)
 }
 
 #[inline]
@@ -338,7 +338,7 @@ fn order_moves(position: &Chess, tt: &TranspositionTable, zobrist: u64) -> MoveL
     let score_slice = &mut scores[0..legal_moves.len()];
     sort_moves(score_slice, &mut legal_moves);
 
-    return legal_moves;
+    legal_moves
 }
 
 fn is_promoting(position: &Chess) -> bool {
@@ -381,10 +381,10 @@ fn quiescence(
         .zobrist_hash::<Zobrist64>(shakmaty::EnPassantMode::Legal)
         .0;
 
-    let mut stand_pat = evaluate(&position);
+    let mut stand_pat = evaluate(position);
 
     if opts.use_nn && stand_pat <= 300 || stand_pat >= -300 {
-        stand_pat += neural_eval::predict(&position);
+        stand_pat += neural_eval::predict(position);
     }
 
     if stand_pat >= beta {
@@ -393,7 +393,7 @@ fn quiescence(
 
     // Delta pruning
 
-    let futility_margin = if is_promoting(&position) {
+    let futility_margin = if is_promoting(position) {
         975 + 775
     } else {
         975
@@ -439,7 +439,7 @@ fn quiescence(
         }
     }
 
-    return Some((alpha, nodes_searched));
+    Some((alpha, nodes_searched))
 }
 
 #[inline]
@@ -465,7 +465,7 @@ fn calculate_extension(m: &Move, position: &Chess, depth_left: u8) -> u8 {
         return 1;
     }
 
-    return 0;
+    0
 }
 
 fn search(
@@ -554,7 +554,7 @@ fn search(
         }
     }
 
-    let moves = order_moves(&position, &tt, zobrist);
+    let moves = order_moves(position, tt, zobrist);
 
     let null_move_possible = !position.is_check();
 
@@ -583,7 +583,7 @@ fn search(
         }
     }
 
-    if moves.len() == 0 {
+    if moves.is_empty() {
         return Some((evaluate(position), NULL_MOVE, nodes_searched));
     }
 
@@ -640,7 +640,7 @@ fn search(
         depth_left,
         EvaluationType::Alpha,
     );
-    return Some((alpha, best_move.clone(), nodes_searched));
+    Some((alpha, best_move.clone(), nodes_searched))
 }
 
 extern crate test;
