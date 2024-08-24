@@ -25,6 +25,7 @@ impl Engine {
             .args(&command[1..])
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
+            .stderr(Stdio::null())
             .spawn()
             .expect("Could not spawn subprocess");
 

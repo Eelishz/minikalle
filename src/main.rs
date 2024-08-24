@@ -1,4 +1,4 @@
-#![feature(test, slice_swap_unchecked, const_trait_impl)]
+#![feature(test, slice_swap_unchecked, const_trait_impl, portable_simd)]
 
 use std::env::args;
 
