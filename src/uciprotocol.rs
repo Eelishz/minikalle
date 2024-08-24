@@ -80,7 +80,7 @@ impl UciProtocol {
                     println!("id author Eelis Holmstén");
                     println!("option name Hash type spin default 64 min 1 max 33554432");
                     println!("option name Book type check default true");
-                    println!("option name NN type check default false");
+                    println!("option name NN type check default true");
                     println!("uciok");
                 }
                 Token::IsReady => println!("readyok"),
@@ -208,9 +208,9 @@ impl UciProtocol {
                         Token::OptionValue(x) => match x.as_str() {
                             "true" => true,
                             "false" => false,
-                            _ => false,
+                            _ => true,
                         },
-                        _ => false,
+                        _ => true,
                     };
                     self.chess_engine.set_nn(value);
                 }

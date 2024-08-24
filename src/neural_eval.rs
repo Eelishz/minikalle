@@ -2,7 +2,6 @@ use shakmaty::{Chess, Color, Position};
 use std::simd::{i16x8, num::SimdInt};
 
 const LANES: usize = 8;
-const SCALE: [i16; 5] = [32, 64, 128, 128, 64];
 const FIXED_POINT: i16 = 32;
 
 const L0: usize = 768;
@@ -25,17 +24,16 @@ const B3: [i16; L4] = include!("model/B3.in");
 const B4: [i16; L5] = include!("model/B4.in");
 
 macro_rules! apply_layer {
-    ($h0:expr, $h1:expr, $l0:expr, $l1:expr, $b:expr, $w:expr, $scale:expr) => {
+    ($h0:expr, $h1:expr, $l0:expr, $l1:expr, $b:expr, $w:expr) => {
         let fixed_point = i16x8::splat(FIXED_POINT);
-        let scale = i16x8::splat($scale);
 
         for e in $h1.iter_mut() {
             let mut zs = [0; $l1 / LANES];
             for i in 0..($l1 / LANES) {
                 let a = i16x8::from_slice(&$h0[i * LANES..i * LANES + LANES]);
-                let b = i16x8::from_slice(&$b[i * LANES..i * LANES + LANES]) * scale;
-                let w = i16x8::from_slice(&$w[i * LANES..i * LANES + LANES]) * scale;
-                zs[i] = ((a * w) + b / fixed_point).reduce_sum();
+                let b = i16x8::from_slice(&$b[i * LANES..i * LANES + LANES]);
+                let w = i16x8::from_slice(&$w[i * LANES..i * LANES + LANES]);
+                zs[i] = (a * w / fixed_point + b).reduce_sum();
             }
             *e = zs.iter().map(|x| x.max(&0)).sum();
         }
@@ -46,34 +44,33 @@ fn feed_forward(input: &[i16; L0]) -> i16 {
     // Layer 0
 
     let mut h0 = [0; L1];
-    apply_layer!(input, h0, L0, L1, B0, W0, SCALE[0]);
+    apply_layer!(input, h0, L0, L1, B0, W0);
 
     // Layer 1
 
     let mut h1 = [0; L2];
-    apply_layer!(h0, h1, L1, L2, B1, W1, SCALE[1]);
+    apply_layer!(h0, h1, L1, L2, B1, W1);
 
     // Layer 2
 
     let mut h2 = [0; L3];
-    apply_layer!(h1, h2, L2, L3, B2, W2, SCALE[2]);
+    apply_layer!(h1, h2, L2, L3, B2, W2);
 
     // Layer 3
 
     let mut h3 = [0; L4];
-    apply_layer!(h2, h3, L3, L3, B3, W3, SCALE[3]);
+    apply_layer!(h2, h3, L3, L3, B3, W3);
 
     // Output Layer
 
-    let scale = i16x8::splat(SCALE[4]);
     let fixed_point = i16x8::splat(FIXED_POINT);
 
     let mut zs = [0; L5 / LANES];
     for i in 0..(L5 / LANES) {
         let a = i16x8::from_slice(&h3[i * LANES..i * LANES + LANES]);
-        let b = i16x8::from_slice(&B4[i * LANES..i * LANES + LANES]) * scale;
-        let w = i16x8::from_slice(&W4[i * LANES..i * LANES + LANES]) * scale;
-        zs[i] = ((a * w) + b / fixed_point).reduce_sum();
+        let b = i16x8::from_slice(&B4[i * LANES..i * LANES + LANES]);
+        let w = i16x8::from_slice(&W4[i * LANES..i * LANES + LANES]);
+        zs[i] = (a * w / fixed_point + b).reduce_sum();
     }
 
     zs.iter().map(|x| x.max(&0)).sum()
