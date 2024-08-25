@@ -1,5 +1,5 @@
+use shakmaty::{Move, Role, Square};
 use std::mem::size_of;
-use shakmaty::{Move, Square, Role};
 
 const NULL_MOVE: Move = Move::Normal {
     role: Role::Pawn,
@@ -53,7 +53,7 @@ impl TranspositionTable {
             count: num_entries as u64,
         }
     }
-    
+
     pub fn clear(&mut self) {
         let len = self.transpositions.len();
         self.transpositions = vec![Transposition::new(); len];
@@ -95,7 +95,13 @@ impl TranspositionTable {
         }
     }
 
-    pub fn probe_table(&self, key: &u64, depth_left: u8, alpha: i16, beta: i16) -> Option<(Move, i16)> {
+    pub fn probe_table(
+        &self,
+        key: &u64,
+        depth_left: u8,
+        alpha: i16,
+        beta: i16,
+    ) -> Option<(Move, i16)> {
         let transposition = self.get(key)?;
         let best_move = transposition.best_move;
         let evaluation = transposition.evaluation;

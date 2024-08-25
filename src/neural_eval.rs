@@ -35,7 +35,7 @@ macro_rules! apply_layer {
                 let w = i16x8::from_slice(&$w[i * LANES..i * LANES + LANES]);
                 zs[i] = (a * w / fixed_point + b).reduce_sum();
             }
-            *e = zs.iter().map(|x| x.max(&0)).sum();
+            *e = zs.iter().map(|x| (*x).max(0)).sum();
         }
     };
 }
@@ -73,7 +73,7 @@ fn feed_forward(input: &[i16; L0]) -> i16 {
         zs[i] = (a * w / fixed_point + b).reduce_sum();
     }
 
-    zs.iter().map(|x| x.max(&0)).sum()
+    zs.iter().map(|x| (*x).max(0)).sum()
 }
 
 fn serialize(position: &Chess) -> [i16; L0] {
