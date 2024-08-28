@@ -1,10 +1,11 @@
 use crate::pgn::PgnIterator;
-use shakmaty::{Chess, Position, san::San};
-use std::env;
+use shakmaty::{san::San, Chess, Position};
+use std::{env, io::stdin};
 
 mod pgn {
     use std::collections::HashMap;
-    use std::fs::read_to_string;
+    use std::fs::File;
+    use std::io::{BufReader, Read};
 
     #[derive(Debug)]
     pub struct Game {
@@ -13,15 +14,15 @@ mod pgn {
     }
 
     pub struct PgnIterator {
-        pgn: String,
-        ptr: usize,
+        pgn: BufReader<File>,
     }
 
     impl PgnIterator {
         pub fn new(path: String) -> Self {
-            let pgn = read_to_string(path).expect("cannot read pgn file");
+            let file = File::open(path).expect("cannot open pgn file");
+            let pgn = BufReader::new(file);
 
-            PgnIterator{pgn, ptr: 0}
+            PgnIterator { pgn }
         }
     }
 
@@ -31,8 +32,8 @@ mod pgn {
         fn next(&mut self) -> Option<Self::Item> {
             // This is a shit praser but it is faster than python.
 
-            let mut game = Game{
-                moves: vec![], 
+            let mut game = Game {
+                moves: vec![],
                 headers: HashMap::new(),
             };
 
@@ -43,13 +44,12 @@ mod pgn {
             let mut value = String::new();
             let mut move_buf = String::new();
 
-            loop {
-                let i = self.ptr;
-                if i >= self.pgn.len() {
-                    return None;
-                }
-                let c = self.pgn.as_bytes()[i] as char;
-                
+            let mut buf = [0; 1];
+            let mut i = 0;
+
+            while self.pgn.read(&mut buf).is_ok() {
+                let c = buf[0] as char;
+
                 // header parsing
                 if !is_game {
                     match c {
@@ -65,32 +65,36 @@ mod pgn {
                                 is_game = true;
                             }
                             prev_newline = i;
-                        },
-                        _ => if read_key {
-                            key.push(c)
-                        } else {
-                            value.push(c)
-                        },
+                        }
+                        _ => {
+                            if read_key {
+                                key.push(c)
+                            } else {
+                                value.push(c)
+                            }
+                        }
                     }
                 } else {
                     match c {
                         '?' => (),
                         '!' => (),
-                        ' '  => {
+                        ' ' => {
                             game.moves.push(move_buf.clone());
                             move_buf.clear();
-                        },
+                        }
                         '\n' => {
                             if i - 1 == prev_newline {
                                 return Some(game);
                             }
                             prev_newline = i;
-                        },
+                        }
                         _ => move_buf.push(c),
                     }
                 }
-                self.ptr += 1;
+                i += 1;
             }
+
+            return None;
         }
     }
 }
@@ -127,8 +131,15 @@ fn serialize(position: &Chess) -> [i32; 768] {
 }
 
 fn main() {
-    let args = env::args();
-    let pgn = PgnIterator::new(args.last().unwrap());
+    let mut args = env::args();
+    let _program = args.next();
+    let pgn = PgnIterator::new(args.next().unwrap());
+    let flags = args.next();
+    let interactive = if let Some(flags) = flags {
+        flags == "--interactive"
+    } else {
+        false
+    };
     // let pgn = PgnIterator::new("lichess_db_standard_rated_2013-01.pgn".to_string());
 
     let n_max = 250_000_000;
@@ -175,17 +186,30 @@ fn main() {
                 buf.push_str(&x.to_string());
             }
             buf.push('\n');
-
+            if interactive && buf.len() > 0 {
+                print!("{buf}");
+                buf.clear();
+                let mut stdin_buffer = String::new();
+                while stdin_buffer.trim() != "next" {
+                    stdin_buffer.clear();
+                    let stdin = stdin();
+                    stdin.read_line(&mut stdin_buffer).unwrap();
+                }
+            }
             n += 1;
-            
+
             if n >= n_max {
                 break 'outer;
             }
         }
 
+        if !interactive {
+            print!("{buf}");
+            buf.clear();
+        }
+    }
+    if !interactive {
         print!("{buf}");
         buf.clear();
     }
-    print!("{buf}");
-    buf.clear();
 }
