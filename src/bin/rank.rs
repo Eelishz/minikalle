@@ -182,11 +182,11 @@ fn simulate_game(engine_a: &mut Engine, engine_b: &mut Engine, position: String)
 fn main() {
     let path = "random_positions";
     let fens = fens_from_file(path);
-    let mut engine_a = Engine::new(&["./target/release/minikalle"], None);
-    let mut engine_b = Engine::new(
+    let mut engine_a = Engine::new(
         &["./target/release/minikalle"],
-        Some(&["setoption name NN value true"]),
+        Some(&["setoption name Book value false"]),
     );
+    let mut engine_b = Engine::new(&["./minikalle"], Some(&["setoption name Book value false"]));
     sleeps_ms(50);
 
     let mut a_score = 0;
